@@ -57,7 +57,22 @@ export interface ChatMessage {
   metadata?: {
     hasMultipleParts: boolean;
     originalParts?: MessagePart[];
+    hasInfographic?: boolean;
+    infographics?: InfographicData[];
   };
+}
+
+export interface InfographicData {
+  id: string;
+  contentType: string;
+  htmlCode: string;
+  rawCode: string; // Original code before cleaning
+  partIndex: number; // Which part this came from
+}
+
+export interface InfographicContent {
+  contenttype: string;
+  code: string;
 }
 
 export interface UserSession {

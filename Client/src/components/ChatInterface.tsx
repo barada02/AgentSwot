@@ -22,8 +22,9 @@ import {
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { useApi } from '../hooks/useApi';
-import { extractTextFromMessage, countTextParts, debugMessageParts } from '../utils/messageUtils';
-import type { UserSession, ChatMessage, RunRequest } from '../types';
+import { countTextParts, debugMessageParts, processMessageWithInfographics } from '../utils/messageUtils';
+import InfographicViewer from './InfographicViewer';
+import type { UserSession, ChatMessage, RunRequest, InfographicData } from '../types';
 
 interface ChatInterfaceProps {
   userSession: UserSession;
@@ -34,6 +35,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [sessionInfo, setSessionInfo] = useState<any>(null);
+  const [selectedInfographic, setSelectedInfographic] = useState<InfographicData | null>(null);
+  const [infographicViewerOpen, setInfographicViewerOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { loading, getSession, sendMessage } = useApi();
@@ -101,25 +104,31 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
       
       if (responses && responses.length > 0) {
         const response = responses[0];
-        const fullText = extractTextFromMessage(response.content);
+        
+        // Process message with infographic detection
+        const processedMessage = processMessageWithInfographics(response.content);
         const partCount = countTextParts(response.content);
         
-        // Debug logging for multi-part messages
+        // Debug logging for multi-part messages and infographics
         if (partCount > 1) {
           debugMessageParts(response.content, `Agent Response (${partCount} parts)`);
-        } else {
-          console.log(`Single part response:`, response.content.parts[0]?.text?.substring(0, 100) + '...');
+        }
+        
+        if (processedMessage.hasInfographics) {
+          console.log(`🎨 Found ${processedMessage.infographics.length} infographic(s) in response:`, processedMessage.infographics);
         }
         
         const agentMessage: ChatMessage = {
           id: response.id,
           role: 'assistant',
-          content: fullText,
+          content: processedMessage.text,
           timestamp: response.timestamp,
           partCount: partCount,
           metadata: {
             hasMultipleParts: partCount > 1,
             originalParts: response.content.parts,
+            hasInfographic: processedMessage.hasInfographics,
+            infographics: processedMessage.infographics,
           },
         };
         
@@ -161,6 +170,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
     } catch (error) {
       console.error('Failed to refresh session:', error);
     }
+  };
+
+  const handleViewInfographic = (infographic: InfographicData) => {
+    setSelectedInfographic(infographic);
+    setInfographicViewerOpen(true);
+  };
+
+  const handleCloseInfographicViewer = () => {
+    setInfographicViewerOpen(false);
+    setSelectedInfographic(null);
   };
 
   return (
@@ -246,23 +265,61 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
                     {message.content}
                   </Typography>
+                  {message.metadata?.hasInfographic && (
+                    <Alert severity="info" sx={{ mt: 1, py: 0.5 }}>
+                      <Typography variant="caption">
+                        📊 This message contains {message.metadata.infographics?.length} infographic(s)
+                      </Typography>
+                      <Box sx={{ mt: 0.5 }}>
+                        {message.metadata.infographics?.map((infographic, index) => (
+                          <Button
+                            key={infographic.id}
+                            size="small"
+                            variant="outlined"
+                            sx={{ mr: 1, mb: 0.5, fontSize: '0.7rem', py: 0.25 }}
+                            onClick={() => {
+                              console.log('View infographic:', infographic.id);
+                              handleViewInfographic(infographic);
+                            }}
+                          >
+                            View Infographic {index + 1}
+                          </Button>
+                        ))}
+                      </Box>
+                    </Alert>
+                  )}
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
                     <Typography variant="caption" sx={{ opacity: 0.7 }}>
                       {new Date(message.timestamp).toLocaleTimeString()}
                     </Typography>
-                    {message.metadata?.hasMultipleParts && (
-                      <Chip
-                        label={`${message.partCount} parts`}
-                        size="small"
-                        variant="outlined"
-                        sx={{ 
-                          height: 16, 
-                          fontSize: '0.6rem',
-                          opacity: 0.7,
-                          '& .MuiChip-label': { px: 0.5 }
-                        }}
-                      />
-                    )}
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      {message.metadata?.hasMultipleParts && (
+                        <Chip
+                          label={`${message.partCount} parts`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ 
+                            height: 16, 
+                            fontSize: '0.6rem',
+                            opacity: 0.7,
+                            '& .MuiChip-label': { px: 0.5 }
+                          }}
+                        />
+                      )}
+                      {message.metadata?.hasInfographic && (
+                        <Chip
+                          label="📊 Infographic"
+                          size="small"
+                          color="secondary"
+                          variant="filled"
+                          sx={{ 
+                            height: 16, 
+                            fontSize: '0.6rem',
+                            '& .MuiChip-label': { px: 0.5 }
+                          }}
+                        />
+                      )}
+                    </Box>
                   </Box>
                 </CardContent>
               </Card>
@@ -299,6 +356,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
           </Box>
         </Box>
       </Paper>
+
+      {/* Infographic Viewer Dialog */}
+      <InfographicViewer
+        infographic={selectedInfographic}
+        open={infographicViewerOpen}
+        onClose={handleCloseInfographicViewer}
+      />
     </Container>
   );
 };
