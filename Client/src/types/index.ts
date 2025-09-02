@@ -53,6 +53,11 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  partCount?: number; // Optional: number of parts this message was composed from
+  metadata?: {
+    hasMultipleParts: boolean;
+    originalParts?: MessagePart[];
+  };
 }
 
 export interface UserSession {

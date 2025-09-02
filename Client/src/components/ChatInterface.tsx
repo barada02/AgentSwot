@@ -22,6 +22,7 @@ import {
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { useApi } from '../hooks/useApi';
+import { extractTextFromMessage, countTextParts, debugMessageParts } from '../utils/messageUtils';
 import type { UserSession, ChatMessage, RunRequest } from '../types';
 
 interface ChatInterfaceProps {
@@ -99,11 +100,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
       setMessages(prev => prev.filter(msg => msg.id !== thinkingMessage.id));
       
       if (responses && responses.length > 0) {
+        const response = responses[0];
+        const fullText = extractTextFromMessage(response.content);
+        const partCount = countTextParts(response.content);
+        
+        // Debug logging for multi-part messages
+        if (partCount > 1) {
+          debugMessageParts(response.content, `Agent Response (${partCount} parts)`);
+        } else {
+          console.log(`Single part response:`, response.content.parts[0]?.text?.substring(0, 100) + '...');
+        }
+        
         const agentMessage: ChatMessage = {
-          id: responses[0].id,
+          id: response.id,
           role: 'assistant',
-          content: responses[0].content.parts[0]?.text || 'No response received',
-          timestamp: responses[0].timestamp,
+          content: fullText,
+          timestamp: response.timestamp,
+          partCount: partCount,
+          metadata: {
+            hasMultipleParts: partCount > 1,
+            originalParts: response.content.parts,
+          },
         };
         
         setMessages(prev => [...prev, agentMessage]);
@@ -229,9 +246,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
                     {message.content}
                   </Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mt: 1 }}>
-                    {new Date(message.timestamp).toLocaleTimeString()}
-                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </Typography>
+                    {message.metadata?.hasMultipleParts && (
+                      <Chip
+                        label={`${message.partCount} parts`}
+                        size="small"
+                        variant="outlined"
+                        sx={{ 
+                          height: 16, 
+                          fontSize: '0.6rem',
+                          opacity: 0.7,
+                          '& .MuiChip-label': { px: 0.5 }
+                        }}
+                      />
+                    )}
+                  </Box>
                 </CardContent>
               </Card>
             </Box>
