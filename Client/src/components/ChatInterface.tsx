@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Container,
-  Paper,
   Typography,
   TextField,
   Button,
@@ -12,14 +10,12 @@ import {
   Card,
   CardContent,
   Avatar,
-  IconButton,
   Divider,
 } from '@mui/material';
 import {
   Send as SendIcon,
   Person as PersonIcon,
   SmartToy as BotIcon,
-  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { useApi } from '../hooks/useApi';
 import { countTextParts, debugMessageParts, processMessageWithInfographics } from '../utils/messageUtils';
@@ -28,18 +24,19 @@ import type { UserSession, ChatMessage, RunRequest, InfographicData } from '../t
 
 interface ChatInterfaceProps {
   userSession: UserSession;
-  onBackToSession: () => void;
+  sessionCreated?: boolean; // Optional prop to indicate if session is already created
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSession }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, sessionCreated: propSessionCreated }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [sessionInfo, setSessionInfo] = useState<any>(null);
   const [selectedInfographic, setSelectedInfographic] = useState<InfographicData | null>(null);
   const [infographicViewerOpen, setInfographicViewerOpen] = useState(false);
+  const [sessionCreated, setSessionCreated] = useState(propSessionCreated || false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sessionInitialized = useRef(propSessionCreated || false); // If session already created, mark as initialized
   
-  const { loading, getSession, sendMessage } = useApi();
+  const { loading, createSession, sendMessage } = useApi();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -49,21 +46,47 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
     scrollToBottom();
   }, [messages]);
 
+  // Create session when component mounts (only if not already created)
   useEffect(() => {
-    const fetchSession = async () => {
+    const initializeSession = async () => {
+      // If session already created from Dashboard, skip creation
+      if (propSessionCreated) {
+        console.log('Session already created from Dashboard, skipping...');
+        setSessionCreated(true);
+        return;
+      }
+      
+      // Prevent multiple session creation attempts
+      if (sessionInitialized.current) {
+        console.log('Session already initialized, skipping...');
+        return;
+      }
+      
+      sessionInitialized.current = true;
+      
       try {
-        const session = await getSession(userSession);
-        setSessionInfo(session);
+        console.log('Creating fallback session:', userSession);
+        await createSession(userSession);
+        setSessionCreated(true);
+        console.log('Fallback session created successfully');
       } catch (error) {
-        console.error('Failed to fetch session:', error);
+        console.error('Failed to create fallback session:', error);
+        sessionInitialized.current = false; // Reset on error so we can retry
+        setSessionCreated(false);
       }
     };
 
-    fetchSession();
-  }, [userSession, getSession]);
+    initializeSession();
+  }, [userSession, createSession, propSessionCreated]); // Added propSessionCreated to dependencies
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
+    
+    // Check if session is created before sending message
+    if (!sessionCreated) {
+      console.error('Session not created yet. Please wait...');
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -163,15 +186,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
     }
   };
 
-  const refreshSession = async () => {
-    try {
-      const session = await getSession(userSession);
-      setSessionInfo(session);
-    } catch (error) {
-      console.error('Failed to refresh session:', error);
-    }
-  };
-
   const handleViewInfographic = (infographic: InfographicData) => {
     setSelectedInfographic(infographic);
     setInfographicViewerOpen(true);
@@ -183,44 +197,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
   };
 
   return (
-    <Container maxWidth="lg">
-      <Paper elevation={3} sx={{ mt: 2, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h5" component="h1">
-              SWOT Analysis Agent
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <IconButton onClick={refreshSession} disabled={loading}>
-                <RefreshIcon />
-              </IconButton>
-              <Button variant="outlined" onClick={onBackToSession}>
-                New Session
-              </Button>
-            </Box>
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Chip label={`User: ${userSession.userId}`} color="primary" size="small" />
-            <Chip label={`Session: ${userSession.sessionId}`} color="secondary" size="small" />
-            <Chip label={`App: ${userSession.appName}`} color="default" size="small" />
-            {sessionInfo && (
-              <Chip 
-                label={`Last Updated: ${new Date(sessionInfo.lastUpdateTime * 1000).toLocaleTimeString()}`} 
-                color="default" 
-                size="small" 
-              />
-            )}
-          </Box>
-        </Box>
-
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Messages Area */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-          {messages.length === 0 ? (
-            <Alert severity="info" sx={{ mb: 2 }}>
+        <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
+          {!sessionCreated && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                🔄 <strong>Initializing session...</strong> Please wait while we set up your analysis session.
+              </Typography>
+            </Alert>
+          )}
+          
+          {sessionCreated && messages.length === 0 ? (
+            <Alert severity="success" sx={{ mb: 2 }}>
               <Typography variant="body2" gutterBottom>
-                <strong>Welcome!</strong> Ask me to analyze your business or product. 
+                <strong>✅ Session Ready!</strong> Ask me to analyze your business or product. 
               </Typography>
               <Typography variant="body2" gutterBottom>
                 <strong>Examples:</strong>
@@ -348,14 +339,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
             <Button
               variant="contained"
               onClick={handleSendMessage}
-              disabled={loading || !inputMessage.trim()}
+              disabled={loading || !inputMessage.trim() || !sessionCreated}
               sx={{ minWidth: 'auto', px: 2 }}
             >
               {loading ? <CircularProgress size={24} /> : <SendIcon />}
             </Button>
           </Box>
         </Box>
-      </Paper>
 
       {/* Infographic Viewer Dialog */}
       <InfographicViewer
@@ -363,7 +353,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
         open={infographicViewerOpen}
         onClose={handleCloseInfographicViewer}
       />
-    </Container>
+    </Box>
   );
 };
 
