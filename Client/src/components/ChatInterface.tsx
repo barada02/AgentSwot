@@ -31,9 +31,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession }) => {
   const [inputMessage, setInputMessage] = useState('');
   const [selectedInfographic, setSelectedInfographic] = useState<InfographicData | null>(null);
   const [infographicViewerOpen, setInfographicViewerOpen] = useState(false);
+  const [sessionCreated, setSessionCreated] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sessionInitialized = useRef(false); // Prevent multiple session creation attempts
   
-  const { loading, sendMessage } = useApi();
+  const { loading, createSession, sendMessage } = useApi();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -43,8 +45,40 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession }) => {
     scrollToBottom();
   }, [messages]);
 
+  // Create session when component mounts
+  useEffect(() => {
+    const initializeSession = async () => {
+      // Prevent multiple session creation attempts
+      if (sessionInitialized.current) {
+        console.log('Session already initialized, skipping...');
+        return;
+      }
+      
+      sessionInitialized.current = true;
+      
+      try {
+        console.log('Creating session:', userSession);
+        await createSession(userSession);
+        setSessionCreated(true);
+        console.log('Session created successfully');
+      } catch (error) {
+        console.error('Failed to create session:', error);
+        sessionInitialized.current = false; // Reset on error so we can retry
+        setSessionCreated(false);
+      }
+    };
+
+    initializeSession();
+  }, [userSession, createSession]); // Removed sessionCreated from dependencies
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
+    
+    // Check if session is created before sending message
+    if (!sessionCreated) {
+      console.error('Session not created yet. Please wait...');
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -158,10 +192,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession }) => {
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Messages Area */}
         <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
-          {messages.length === 0 ? (
-            <Alert severity="info" sx={{ mb: 2 }}>
+          {!sessionCreated && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                🔄 <strong>Initializing session...</strong> Please wait while we set up your analysis session.
+              </Typography>
+            </Alert>
+          )}
+          
+          {sessionCreated && messages.length === 0 ? (
+            <Alert severity="success" sx={{ mb: 2 }}>
               <Typography variant="body2" gutterBottom>
-                <strong>Welcome!</strong> Ask me to analyze your business or product. 
+                <strong>✅ Session Ready!</strong> Ask me to analyze your business or product. 
               </Typography>
               <Typography variant="body2" gutterBottom>
                 <strong>Examples:</strong>
@@ -289,7 +331,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession }) => {
             <Button
               variant="contained"
               onClick={handleSendMessage}
-              disabled={loading || !inputMessage.trim()}
+              disabled={loading || !inputMessage.trim() || !sessionCreated}
               sx={{ minWidth: 'auto', px: 2 }}
             >
               {loading ? <CircularProgress size={24} /> : <SendIcon />}

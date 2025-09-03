@@ -15,13 +15,13 @@ import type { UserSession } from '../types';
 
 const AIPage: React.FC = () => {
   const [activeView, setActiveView] = useState<'chat' | 'infographic'>('chat');
-
-  // Create a user session for the chat interface
-  const userSession: UserSession = {
+  
+  // Generate consistent session ID for this component instance
+  const [userSession] = useState<UserSession>(() => ({
     userId: 'demo-user-123', // In a real app, this would come from authentication
-    sessionId: `session-${Date.now()}`, // Generate unique session ID
-    appName: 'AgentSwot', // Your app name
-  };
+    sessionId: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique session ID
+    appName: 'multi_tool_agent', // App name for API calls
+  }));
 
   return (
     <DashboardLayout>
