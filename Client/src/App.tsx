@@ -8,7 +8,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import DashboardPage from './pages/DashboardPage';
-import AnalysisPage from './pages/AnalysisPage';
+import AIPage from './pages/AIPage';
 
 const theme = createTheme({
   palette: {
@@ -107,8 +107,8 @@ function App() {
           {/* Dashboard */}
           <Route path="/dashboard" element={<DashboardPage />} />
           
-          {/* Analysis */}
-          <Route path="/analysis/:sessionId" element={<AnalysisPage />} />
+          {/* AI Analysis */}
+          <Route path="/ai" element={<AIPage />} />
           
           {/* Catch all - redirect to landing */}
           <Route path="*" element={<Navigate to="/" replace />} />
