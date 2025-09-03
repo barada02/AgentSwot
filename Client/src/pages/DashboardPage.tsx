@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -7,6 +7,7 @@ import {
   CardContent,
   Grid,
   Paper,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -16,9 +17,38 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
+import { useApi } from '../hooks/useApi';
+import type { UserSession } from '../types';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { createSession } = useApi();
+  const [creatingSession, setCreatingSession] = useState(false);
+
+  const handleNewAnalysis = async () => {
+    setCreatingSession(true);
+    
+    try {
+      // Create new session
+      const userSession: UserSession = {
+        userId: 'demo-user-123', // In real app, get from auth
+        sessionId: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        appName: 'multi_tool_agent', // For API calls
+      };
+      
+      console.log('Creating new analysis session:', userSession);
+      await createSession(userSession);
+      
+      // Navigate to AI page with session data
+      navigate('/ai', { state: { userSession } });
+    } catch (error) {
+      console.error('Failed to create session:', error);
+      // Still navigate but let AI page handle session creation as fallback
+      navigate('/ai');
+    } finally {
+      setCreatingSession(false);
+    }
+  };
 
   const stats = [
     { title: 'Total Analyses', value: '24', icon: <AssessmentIcon />, color: '#3b82f6' },
@@ -106,8 +136,9 @@ const DashboardPage: React.FC = () => {
               <Button
                 variant="contained"
                 size="large"
-                startIcon={<AddIcon />}
-                onClick={() => navigate('/ai')}
+                startIcon={creatingSession ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
+                onClick={handleNewAnalysis}
+                disabled={creatingSession}
                 sx={{
                   bgcolor: 'white',
                   color: '#6366f1',
@@ -116,10 +147,14 @@ const DashboardPage: React.FC = () => {
                   py: 1.5,
                   '&:hover': {
                     bgcolor: '#f8fafc',
+                  },
+                  '&:disabled': {
+                    bgcolor: '#f3f4f6',
+                    color: '#9ca3af',
                   }
                 }}
               >
-                New Analysis
+                {creatingSession ? 'Creating Session...' : 'New Analysis'}
               </Button>
             </Paper>
           </Grid>

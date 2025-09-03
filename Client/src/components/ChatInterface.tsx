@@ -24,16 +24,17 @@ import type { UserSession, ChatMessage, RunRequest, InfographicData } from '../t
 
 interface ChatInterfaceProps {
   userSession: UserSession;
+  sessionCreated?: boolean; // Optional prop to indicate if session is already created
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, sessionCreated: propSessionCreated }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [selectedInfographic, setSelectedInfographic] = useState<InfographicData | null>(null);
   const [infographicViewerOpen, setInfographicViewerOpen] = useState(false);
-  const [sessionCreated, setSessionCreated] = useState(false);
+  const [sessionCreated, setSessionCreated] = useState(propSessionCreated || false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const sessionInitialized = useRef(false); // Prevent multiple session creation attempts
+  const sessionInitialized = useRef(propSessionCreated || false); // If session already created, mark as initialized
   
   const { loading, createSession, sendMessage } = useApi();
 
@@ -45,9 +46,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Create session when component mounts
+  // Create session when component mounts (only if not already created)
   useEffect(() => {
     const initializeSession = async () => {
+      // If session already created from Dashboard, skip creation
+      if (propSessionCreated) {
+        console.log('Session already created from Dashboard, skipping...');
+        setSessionCreated(true);
+        return;
+      }
+      
       // Prevent multiple session creation attempts
       if (sessionInitialized.current) {
         console.log('Session already initialized, skipping...');
@@ -57,19 +65,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession }) => {
       sessionInitialized.current = true;
       
       try {
-        console.log('Creating session:', userSession);
+        console.log('Creating fallback session:', userSession);
         await createSession(userSession);
         setSessionCreated(true);
-        console.log('Session created successfully');
+        console.log('Fallback session created successfully');
       } catch (error) {
-        console.error('Failed to create session:', error);
+        console.error('Failed to create fallback session:', error);
         sessionInitialized.current = false; // Reset on error so we can retry
         setSessionCreated(false);
       }
     };
 
     initializeSession();
-  }, [userSession, createSession]); // Removed sessionCreated from dependencies
+  }, [userSession, createSession, propSessionCreated]); // Added propSessionCreated to dependencies
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
