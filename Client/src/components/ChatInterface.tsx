@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Container,
-  Paper,
   Typography,
   TextField,
   Button,
@@ -12,14 +10,12 @@ import {
   Card,
   CardContent,
   Avatar,
-  IconButton,
   Divider,
 } from '@mui/material';
 import {
   Send as SendIcon,
   Person as PersonIcon,
   SmartToy as BotIcon,
-  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { useApi } from '../hooks/useApi';
 import { countTextParts, debugMessageParts, processMessageWithInfographics } from '../utils/messageUtils';
@@ -28,18 +24,16 @@ import type { UserSession, ChatMessage, RunRequest, InfographicData } from '../t
 
 interface ChatInterfaceProps {
   userSession: UserSession;
-  onBackToSession: () => void;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSession }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [sessionInfo, setSessionInfo] = useState<any>(null);
   const [selectedInfographic, setSelectedInfographic] = useState<InfographicData | null>(null);
   const [infographicViewerOpen, setInfographicViewerOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { loading, getSession, sendMessage } = useApi();
+  const { loading, sendMessage } = useApi();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,19 +42,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  useEffect(() => {
-    const fetchSession = async () => {
-      try {
-        const session = await getSession(userSession);
-        setSessionInfo(session);
-      } catch (error) {
-        console.error('Failed to fetch session:', error);
-      }
-    };
-
-    fetchSession();
-  }, [userSession, getSession]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -163,15 +144,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
     }
   };
 
-  const refreshSession = async () => {
-    try {
-      const session = await getSession(userSession);
-      setSessionInfo(session);
-    } catch (error) {
-      console.error('Failed to refresh session:', error);
-    }
-  };
-
   const handleViewInfographic = (infographic: InfographicData) => {
     setSelectedInfographic(infographic);
     setInfographicViewerOpen(true);
@@ -183,40 +155,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
   };
 
   return (
-    <Container maxWidth="lg">
-      <Paper elevation={3} sx={{ mt: 2, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h5" component="h1">
-              SWOT Analysis Agent
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <IconButton onClick={refreshSession} disabled={loading}>
-                <RefreshIcon />
-              </IconButton>
-              <Button variant="outlined" onClick={onBackToSession}>
-                New Session
-              </Button>
-            </Box>
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Chip label={`User: ${userSession.userId}`} color="primary" size="small" />
-            <Chip label={`Session: ${userSession.sessionId}`} color="secondary" size="small" />
-            <Chip label={`App: ${userSession.appName}`} color="default" size="small" />
-            {sessionInfo && (
-              <Chip 
-                label={`Last Updated: ${new Date(sessionInfo.lastUpdateTime * 1000).toLocaleTimeString()}`} 
-                color="default" 
-                size="small" 
-              />
-            )}
-          </Box>
-        </Box>
-
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Messages Area */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+        <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
           {messages.length === 0 ? (
             <Alert severity="info" sx={{ mb: 2 }}>
               <Typography variant="body2" gutterBottom>
@@ -355,7 +296,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
             </Button>
           </Box>
         </Box>
-      </Paper>
 
       {/* Infographic Viewer Dialog */}
       <InfographicViewer
@@ -363,7 +303,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
         open={infographicViewerOpen}
         onClose={handleCloseInfographicViewer}
       />
-    </Container>
+    </Box>
   );
 };
 

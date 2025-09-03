@@ -4,23 +4,23 @@ import {
   Paper,
   Typography,
   Button,
-  Alert,
 } from '@mui/material';
 import {
   Chat as ChatIcon,
   Assessment as InfographicIcon,
 } from '@mui/icons-material';
 import DashboardLayout from '../layouts/DashboardLayout';
+import ChatInterface from '../components/ChatInterface';
+import type { UserSession } from '../types';
 
 const AIPage: React.FC = () => {
   const [activeView, setActiveView] = useState<'chat' | 'infographic'>('chat');
 
-  // For now, we'll show placeholders until the components are properly integrated
-  const mockUserSession = {
-    id: '1',
-    name: 'New Analysis',
-    created: new Date().toISOString(),
-    lastModified: new Date().toISOString(),
+  // Create a user session for the chat interface
+  const userSession: UserSession = {
+    userId: 'demo-user-123', // In a real app, this would come from authentication
+    sessionId: `session-${Date.now()}`, // Generate unique session ID
+    appName: 'AgentSwot', // Your app name
   };
 
   return (
@@ -77,14 +77,10 @@ const AIPage: React.FC = () => {
                   Describe your business and get intelligent SWOT analysis
                 </Typography>
               </Box>
-              <Box sx={{ flex: 1, p: 3 }}>
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  Chat interface will be integrated here. For now, this is a placeholder.
-                </Alert>
-                <Typography variant="body1" color="text.secondary">
-                  The ChatInterface component requires session management integration. 
-                  We'll connect this properly with the backend in the next iteration.
-                </Typography>
+              <Box sx={{ flex: 1 }}>
+                <ChatInterface 
+                  userSession={userSession}
+                />
               </Box>
             </Box>
           ) : (
@@ -98,11 +94,11 @@ const AIPage: React.FC = () => {
                 </Typography>
               </Box>
               <Box sx={{ flex: 1, p: 3 }}>
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  Infographic viewer will be displayed here. For now, this is a placeholder.
-                </Alert>
-                <Typography variant="body1" color="text.secondary">
-                  The InfographicViewer component will show generated SWOT analysis charts and visualizations.
+                <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', mt: 8 }}>
+                  Infographic viewer will be displayed here after completing a chat analysis.
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 2 }}>
+                  Start a conversation in the AI Chat to generate SWOT analysis visualizations.
                 </Typography>
               </Box>
             </Box>
