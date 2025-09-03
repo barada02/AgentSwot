@@ -73,15 +73,21 @@ const globalStyles = {
   },
   html: {
     height: '100%',
+    width: '100%',
   },
   body: {
     height: '100%',
+    width: '100%',
     margin: 0,
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    padding: 0,
+    background: '#0f172a', // Default dark background
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    overflow: 'auto',
   },
   '#root': {
     height: '100%',
+    width: '100%',
+    minHeight: '100vh',
   },
 };
 

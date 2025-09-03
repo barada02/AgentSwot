@@ -1,297 +1,326 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Container,
-  Box,
   Typography,
   Button,
+  Box,
   Grid,
   Card,
   CardContent,
-  TextField,
-  Paper,
-  Chip,
-  IconButton,
-  Fade,
-  Grow,
 } from '@mui/material';
 import {
-  PlayArrow as PlayIcon,
-  Send as SendIcon,
   TrendingUp as TrendingUpIcon,
   Speed as SpeedIcon,
   Security as SecurityIcon,
-  AutoGraph as AutoGraphIcon,
+  Analytics as AnalyticsIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import LandingLayout from '../layouts/LandingLayout';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const [demoInput, setDemoInput] = useState('');
 
   const features = [
     {
-      icon: <AutoGraphIcon sx={{ fontSize: 40, color: '#6366f1' }} />,
+      icon: <AnalyticsIcon sx={{ fontSize: 50, color: '#3b82f6' }} />,
       title: 'AI-Powered Analysis',
-      description: 'Advanced AI agents provide comprehensive SWOT analysis tailored to your business'
+      description: 'Advanced AI agents provide comprehensive SWOT analysis tailored to your business needs'
     },
     {
-      icon: <TrendingUpIcon sx={{ fontSize: 40, color: '#3b82f6' }} />,
-      title: 'Interactive Infographics',
-      description: 'Dynamic visual representations that bring your analysis to life'
+      icon: <TrendingUpIcon sx={{ fontSize: 50, color: '#60a5fa' }} />,
+      title: 'Strategic Insights',
+      description: 'Get actionable insights and strategic recommendations for business growth'
     },
     {
-      icon: <SpeedIcon sx={{ fontSize: 40, color: '#10b981' }} />,
-      title: 'Real-time Results',
-      description: 'Get instant insights and recommendations as you chat with our agents'
+      icon: <SpeedIcon sx={{ fontSize: 50, color: '#93c5fd' }} />,
+      title: 'Fast Results',
+      description: 'Receive detailed analysis in minutes, not hours or days'
     },
     {
-      icon: <SecurityIcon sx={{ fontSize: 40, color: '#f59e0b' }} />,
-      title: 'Secure & Private',
+      icon: <SecurityIcon sx={{ fontSize: 50, color: '#dbeafe' }} />,
+      title: 'Secure Platform',
       description: 'Your business data is protected with enterprise-grade security'
     },
   ];
 
-  const handleDemoSubmit = () => {
-    if (demoInput.trim()) {
-      // Navigate to auth with demo parameter
-      navigate(`/auth?mode=demo&query=${encodeURIComponent(demoInput)}`);
-    }
-  };
-
-  const handleGetStarted = () => {
-    navigate('/auth?mode=signup');
-  };
-
   return (
-    <LandingLayout>
+    <Box sx={{ width: '100%', overflow: 'hidden' }}>
+      <LandingLayout>
       {/* Hero Section */}
-      <Container maxWidth="lg">
-        <Box sx={{ py: { xs: 8, md: 12 }, textAlign: 'center' }}>
-          <Fade in timeout={1000}>
-            <Box>
-              <Typography
-                variant="h2"
-                component="h1"
-                sx={{
-                  fontWeight: 'bold',
-                  mb: 3,
-                  background: 'linear-gradient(45deg, #1e293b, #475569)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  fontSize: { xs: '2.5rem', md: '3.5rem' },
-                }}
-              >
-                AI-Powered Business Analysis
-              </Typography>
-              
-              <Typography
-                variant="h5"
-                color="text.secondary"
-                sx={{ mb: 6, maxWidth: 600, mx: 'auto', fontWeight: 300 }}
-              >
-                Transform your business ideas into strategic insights with intelligent SWOT analysis and interactive infographics
-              </Typography>
-              
-              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap', mb: 8 }}>
-                <Button
-                  variant="contained"
-                  size="large"
-                  onClick={handleGetStarted}
-                  sx={{
-                    px: 4,
-                    py: 1.5,
-                    borderRadius: 3,
-                    fontSize: '1.1rem',
-                    textTransform: 'none',
-                    background: 'linear-gradient(45deg, #6366f1, #3b82f6)',
-                    '&:hover': {
-                      background: 'linear-gradient(45deg, #5855eb, #2563eb)',
-                    }
-                  }}
-                >
-                  Get Started Free
-                </Button>
-                
-                <Button
-                  variant="outlined"
-                  size="large"
-                  startIcon={<PlayIcon />}
-                  sx={{
-                    px: 4,
-                    py: 1.5,
-                    borderRadius: 3,
-                    fontSize: '1.1rem',
-                    textTransform: 'none',
-                    borderColor: '#6366f1',
-                    color: '#6366f1',
-                    '&:hover': {
-                      borderColor: '#5855eb',
-                      bgcolor: '#6366f1',
-                      color: 'white',
-                    }
-                  }}
-                >
-                  Watch Demo
-                </Button>
-              </Box>
-            </Box>
-          </Fade>
-          
-          {/* Interactive Demo Widget */}
-          <Grow in timeout={1500}>
-            <Paper
-              elevation={20}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+          color: 'white',
+          py: { xs: 8, md: 12 },
+          position: 'relative',
+          overflow: 'hidden',
+          width: '100%',
+          minHeight: '100vh',
+        }}
+      >
+        {/* Background Pattern */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundImage: `
+              radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+              radial-gradient(circle at 75% 75%, rgba(147, 197, 253, 0.1) 0%, transparent 50%)
+            `,
+            zIndex: 1,
+          }}
+        />
+        
+        <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 2 }}>
+          <Box sx={{ textAlign: 'center', mb: 8 }}>
+            <Typography
+              variant="h1"
               sx={{
-                p: 4,
-                maxWidth: 600,
-                mx: 'auto',
-                borderRadius: 4,
-                background: 'linear-gradient(145deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7))',
-                backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255,255,255,0.2)',
+                fontSize: { xs: '2.5rem', md: '4rem', lg: '5rem' },
+                fontWeight: 900,
+                mb: 3,
+                background: 'linear-gradient(45deg, #ffffff 30%, #3b82f6 60%, #60a5fa 90%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: '0 4px 8px rgba(0,0,0,0.3)',
               }}
             >
-              <Typography variant="h6" sx={{ mb: 3, color: '#1e293b' }}>
-                🚀 Try it now - Ask for a SWOT analysis
-              </Typography>
+              AgentSwot
+            </Typography>
+            
+            <Typography
+              variant="h4"
+              sx={{
+                fontSize: { xs: '1.2rem', md: '1.8rem', lg: '2.2rem' },
+                fontWeight: 300,
+                mb: 4,
+                color: '#e2e8f0',
+                maxWidth: '800px',
+                mx: 'auto',
+                lineHeight: 1.4,
+              }}
+            >
+              AI-Powered SWOT Analysis Platform
+            </Typography>
+            
+            <Typography
+              variant="body1"
+              sx={{
+                fontSize: { xs: '1rem', md: '1.2rem' },
+                color: '#cbd5e1',
+                mb: 6,
+                maxWidth: '600px',
+                mx: 'auto',
+                lineHeight: 1.6,
+              }}
+            >
+              Transform your business strategy with intelligent analysis. 
+              Get comprehensive SWOT insights powered by advanced AI agents.
+            </Typography>
+            
+            {/* CTA Buttons */}
+            <Box sx={{ display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() => navigate('/auth?mode=signup')}
+                sx={{
+                  px: 4,
+                  py: 2,
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  borderRadius: 3,
+                  background: 'linear-gradient(45deg, #3b82f6 30%, #1d4ed8 90%)',
+                  boxShadow: '0 8px 32px rgba(59, 130, 246, 0.3)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #2563eb 30%, #1e40af 90%)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 12px 40px rgba(59, 130, 246, 0.4)',
+                  },
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                Get Started
+              </Button>
               
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField
-                  fullWidth
-                  placeholder="e.g., Analyze my coffee shop business idea"
-                  value={demoInput}
-                  onChange={(e) => setDemoInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleDemoSubmit()}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      bgcolor: 'rgba(255,255,255,0.8)',
-                    }
-                  }}
-                />
-                <IconButton
-                  onClick={handleDemoSubmit}
-                  disabled={!demoInput.trim()}
-                  sx={{
-                    bgcolor: '#6366f1',
-                    color: 'white',
-                    '&:hover': { bgcolor: '#5855eb' },
-                    '&:disabled': { bgcolor: 'grey.300' }
-                  }}
-                >
-                  <SendIcon />
-                </IconButton>
-              </Box>
-              
-              <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
-                {['Coffee shop', 'Tech startup', 'E-commerce', 'Mobile app'].map((example) => (
-                  <Chip
-                    key={example}
-                    label={example}
-                    onClick={() => setDemoInput(`Analyze my ${example.toLowerCase()} business idea`)}
-                    sx={{
-                      cursor: 'pointer',
-                      '&:hover': { bgcolor: '#6366f1', color: 'white' }
-                    }}
-                  />
-                ))}
-              </Box>
-            </Paper>
-          </Grow>
-        </Box>
-      </Container>
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={() => navigate('/auth?mode=login')}
+                sx={{
+                  px: 4,
+                  py: 2,
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  borderRadius: 3,
+                  borderColor: '#3b82f6',
+                  color: '#3b82f6',
+                  borderWidth: 2,
+                  '&:hover': {
+                    borderColor: '#2563eb',
+                    color: '#2563eb',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    transform: 'translateY(-2px)',
+                  },
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                Sign In
+              </Button>
+            </Box>
+          </Box>
+        </Container>
+      </Box>
 
       {/* Features Section */}
-      <Box sx={{ bgcolor: 'grey.50', py: { xs: 8, md: 12 } }}>
+      <Box
+        sx={{
+          background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+          py: { xs: 8, md: 12 },
+          color: 'white',
+          width: '100%',
+        }}
+      >
         <Container maxWidth="lg">
-          <Typography
-            variant="h3"
-            component="h2"
-            textAlign="center"
-            sx={{ mb: 8, fontWeight: 'bold', color: '#1e293b' }}
-          >
-            Why Choose Agent SWOT?
-          </Typography>
+          <Box sx={{ textAlign: 'center', mb: 8 }}>
+            <Typography
+              variant="h2"
+              sx={{
+                fontSize: { xs: '2rem', md: '3rem' },
+                fontWeight: 700,
+                mb: 3,
+                background: 'linear-gradient(45deg, #ffffff 30%, #3b82f6 90%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              Why Choose AgentSwot?
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                fontSize: '1.2rem',
+                color: '#cbd5e1',
+                maxWidth: '600px',
+                mx: 'auto',
+              }}
+            >
+              Powerful features designed to accelerate your business analysis
+            </Typography>
+          </Box>
           
           <Grid container spacing={4}>
             {features.map((feature, index) => (
-              <Grid key={index} size={{ xs: 12, sm: 6, md: 3 }}>
-                <Grow in timeout={1000 + index * 200}>
-                  <Card
-                    sx={{
-                      height: '100%',
-                      textAlign: 'center',
-                      borderRadius: 3,
-                      border: 'none',
-                      boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-10px)',
-                        boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-                      }
-                    }}
-                  >
-                    <CardContent sx={{ p: 4 }}>
-                      <Box sx={{ mb: 3 }}>
-                        {feature.icon}
-                      </Box>
-                      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                        {feature.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {feature.description}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grow>
+              <Grid size={{ xs: 12, md: 6, lg: 3 }} key={index}>
+                <Card
+                  sx={{
+                    height: '100%',
+                    background: 'linear-gradient(145deg, #1e293b 0%, #334155 100%)',
+                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                    borderRadius: 3,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      boxShadow: '0 20px 40px rgba(59, 130, 246, 0.2)',
+                      borderColor: 'rgba(59, 130, 246, 0.4)',
+                    },
+                  }}
+                >
+                  <CardContent sx={{ p: 4, textAlign: 'center' }}>
+                    <Box sx={{ mb: 3 }}>
+                      {feature.icon}
+                    </Box>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 600,
+                        mb: 2,
+                        color: '#ffffff',
+                      }}
+                    >
+                      {feature.title}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: '#cbd5e1',
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {feature.description}
+                    </Typography>
+                  </CardContent>
+                </Card>
               </Grid>
             ))}
           </Grid>
         </Container>
       </Box>
 
-      {/* CTA Section */}
-      <Container maxWidth="lg">
-        <Box sx={{ py: { xs: 8, md: 12 }, textAlign: 'center' }}>
+      {/* Footer CTA Section */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+          py: { xs: 8, md: 10 },
+          color: 'white',
+          textAlign: 'center',
+          width: '100%',
+        }}
+      >
+        <Container maxWidth="md">
           <Typography
             variant="h3"
-            component="h2"
-            sx={{ mb: 3, fontWeight: 'bold', color: '#1e293b' }}
+            sx={{
+              fontSize: { xs: '1.8rem', md: '2.5rem' },
+              fontWeight: 700,
+              mb: 3,
+              color: '#ffffff',
+            }}
           >
-            Ready to Transform Your Business?
+            Ready to Transform Your Business Strategy?
           </Typography>
-          
           <Typography
-            variant="h6"
-            color="text.secondary"
-            sx={{ mb: 6, maxWidth: 500, mx: 'auto' }}
+            variant="body1"
+            sx={{
+              fontSize: '1.1rem',
+              color: '#cbd5e1',
+              mb: 5,
+              lineHeight: 1.6,
+            }}
           >
-            Join thousands of entrepreneurs who trust Agent SWOT for their strategic planning
+            Join thousands of businesses using AgentSwot for strategic analysis and planning.
           </Typography>
-          
           <Button
             variant="contained"
             size="large"
-            onClick={handleGetStarted}
+            onClick={() => navigate('/auth?mode=signup')}
             sx={{
               px: 6,
-              py: 2,
-              borderRadius: 3,
+              py: 2.5,
               fontSize: '1.2rem',
-              textTransform: 'none',
-              background: 'linear-gradient(45deg, #6366f1, #3b82f6)',
+              fontWeight: 600,
+              borderRadius: 3,
+              background: 'linear-gradient(45deg, #3b82f6 30%, #1d4ed8 90%)',
+              boxShadow: '0 8px 32px rgba(59, 130, 246, 0.3)',
               '&:hover': {
-                background: 'linear-gradient(45deg, #5855eb, #2563eb)',
-              }
+                background: 'linear-gradient(45deg, #2563eb 30%, #1e40af 90%)',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 12px 40px rgba(59, 130, 246, 0.4)',
+              },
+              transition: 'all 0.3s ease',
             }}
           >
             Start Your Free Analysis
           </Button>
-        </Box>
-      </Container>
+        </Container>
+      </Box>
     </LandingLayout>
+    </Box>
   );
 };
 

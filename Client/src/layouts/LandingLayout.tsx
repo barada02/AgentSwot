@@ -19,14 +19,15 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ children }) => {
 
   return (
     <BaseLayout>
+      <Box sx={{ width: '100%', overflow: 'hidden' }}>
       <AppBar 
         position="sticky" 
         elevation={0}
         sx={{ 
-          bgcolor: 'transparent',
+          background: 'linear-gradient(90deg, #0f172a 0%, #1e293b 100%)',
           backdropFilter: 'blur(20px)',
-          borderBottom: '1px solid',
-          borderColor: 'divider',
+          borderBottom: '1px solid rgba(59, 130, 246, 0.2)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
         }}
       >
         <Container maxWidth="lg">
@@ -37,7 +38,8 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ children }) => {
                 component="div" 
                 sx={{ 
                   fontWeight: 'bold',
-                  background: 'linear-gradient(45deg, #6366f1, #3b82f6)',
+                  fontSize: '1.5rem',
+                  background: 'linear-gradient(45deg, #ffffff 30%, #3b82f6 90%)',
                   backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
@@ -45,18 +47,23 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ children }) => {
                 }}
                 onClick={() => navigate('/')}
               >
-                🎯 Agent SWOT
+                AgentSwot
               </Typography>
             </Box>
             
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button 
-                variant="outlined" 
+                variant="text" 
                 onClick={() => navigate('/auth?mode=login')}
                 sx={{ 
                   borderRadius: 2,
                   textTransform: 'none',
                   fontWeight: 500,
+                  color: '#e2e8f0',
+                  '&:hover': {
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    color: '#3b82f6',
+                  }
                 }}
               >
                 Sign In
@@ -68,9 +75,9 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ children }) => {
                   borderRadius: 2,
                   textTransform: 'none',
                   fontWeight: 500,
-                  background: 'linear-gradient(45deg, #6366f1, #3b82f6)',
+                  background: 'linear-gradient(45deg, #3b82f6 30%, #1d4ed8 90%)',
                   '&:hover': {
-                    background: 'linear-gradient(45deg, #5855eb, #2563eb)',
+                    background: 'linear-gradient(45deg, #2563eb 30%, #1e40af 90%)',
                   }
                 }}
               >
@@ -82,6 +89,7 @@ const LandingLayout: React.FC<LandingLayoutProps> = ({ children }) => {
       </AppBar>
       
       {children}
+      </Box>
     </BaseLayout>
   );
 };
