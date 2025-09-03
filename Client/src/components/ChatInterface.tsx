@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Container,
-  Paper,
   Typography,
   TextField,
   Button,
@@ -12,30 +10,33 @@ import {
   Card,
   CardContent,
   Avatar,
-  IconButton,
   Divider,
 } from '@mui/material';
 import {
   Send as SendIcon,
   Person as PersonIcon,
   SmartToy as BotIcon,
-  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { useApi } from '../hooks/useApi';
-import type { UserSession, ChatMessage, RunRequest } from '../types';
+import { countTextParts, debugMessageParts, processMessageWithInfographics } from '../utils/messageUtils';
+import InfographicViewer from './InfographicViewer';
+import type { UserSession, ChatMessage, RunRequest, InfographicData } from '../types';
 
 interface ChatInterfaceProps {
   userSession: UserSession;
-  onBackToSession: () => void;
+  sessionCreated?: boolean; // Optional prop to indicate if session is already created
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSession }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, sessionCreated: propSessionCreated }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [sessionInfo, setSessionInfo] = useState<any>(null);
+  const [selectedInfographic, setSelectedInfographic] = useState<InfographicData | null>(null);
+  const [infographicViewerOpen, setInfographicViewerOpen] = useState(false);
+  const [sessionCreated, setSessionCreated] = useState(propSessionCreated || false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sessionInitialized = useRef(propSessionCreated || false); // If session already created, mark as initialized
   
-  const { loading, getSession, sendMessage } = useApi();
+  const { loading, createSession, sendMessage } = useApi();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,21 +46,47 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
     scrollToBottom();
   }, [messages]);
 
+  // Create session when component mounts (only if not already created)
   useEffect(() => {
-    const fetchSession = async () => {
+    const initializeSession = async () => {
+      // If session already created from Dashboard, skip creation
+      if (propSessionCreated) {
+        console.log('Session already created from Dashboard, skipping...');
+        setSessionCreated(true);
+        return;
+      }
+      
+      // Prevent multiple session creation attempts
+      if (sessionInitialized.current) {
+        console.log('Session already initialized, skipping...');
+        return;
+      }
+      
+      sessionInitialized.current = true;
+      
       try {
-        const session = await getSession(userSession);
-        setSessionInfo(session);
+        console.log('Creating fallback session:', userSession);
+        await createSession(userSession);
+        setSessionCreated(true);
+        console.log('Fallback session created successfully');
       } catch (error) {
-        console.error('Failed to fetch session:', error);
+        console.error('Failed to create fallback session:', error);
+        sessionInitialized.current = false; // Reset on error so we can retry
+        setSessionCreated(false);
       }
     };
 
-    fetchSession();
-  }, [userSession, getSession]);
+    initializeSession();
+  }, [userSession, createSession, propSessionCreated]); // Added propSessionCreated to dependencies
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
+    
+    // Check if session is created before sending message
+    if (!sessionCreated) {
+      console.error('Session not created yet. Please wait...');
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -99,11 +126,33 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
       setMessages(prev => prev.filter(msg => msg.id !== thinkingMessage.id));
       
       if (responses && responses.length > 0) {
+        const response = responses[0];
+        
+        // Process message with infographic detection
+        const processedMessage = processMessageWithInfographics(response.content);
+        const partCount = countTextParts(response.content);
+        
+        // Debug logging for multi-part messages and infographics
+        if (partCount > 1) {
+          debugMessageParts(response.content, `Agent Response (${partCount} parts)`);
+        }
+        
+        if (processedMessage.hasInfographics) {
+          console.log(`🎨 Found ${processedMessage.infographics.length} infographic(s) in response:`, processedMessage.infographics);
+        }
+        
         const agentMessage: ChatMessage = {
-          id: responses[0].id,
+          id: response.id,
           role: 'assistant',
-          content: responses[0].content.parts[0]?.text || 'No response received',
-          timestamp: responses[0].timestamp,
+          content: processedMessage.text,
+          timestamp: response.timestamp,
+          partCount: partCount,
+          metadata: {
+            hasMultipleParts: partCount > 1,
+            originalParts: response.content.parts,
+            hasInfographic: processedMessage.hasInfographics,
+            infographics: processedMessage.infographics,
+          },
         };
         
         setMessages(prev => [...prev, agentMessage]);
@@ -137,54 +186,32 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
     }
   };
 
-  const refreshSession = async () => {
-    try {
-      const session = await getSession(userSession);
-      setSessionInfo(session);
-    } catch (error) {
-      console.error('Failed to refresh session:', error);
-    }
+  const handleViewInfographic = (infographic: InfographicData) => {
+    setSelectedInfographic(infographic);
+    setInfographicViewerOpen(true);
+  };
+
+  const handleCloseInfographicViewer = () => {
+    setInfographicViewerOpen(false);
+    setSelectedInfographic(null);
   };
 
   return (
-    <Container maxWidth="lg">
-      <Paper elevation={3} sx={{ mt: 2, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h5" component="h1">
-              SWOT Analysis Agent
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <IconButton onClick={refreshSession} disabled={loading}>
-                <RefreshIcon />
-              </IconButton>
-              <Button variant="outlined" onClick={onBackToSession}>
-                New Session
-              </Button>
-            </Box>
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Chip label={`User: ${userSession.userId}`} color="primary" size="small" />
-            <Chip label={`Session: ${userSession.sessionId}`} color="secondary" size="small" />
-            <Chip label={`App: ${userSession.appName}`} color="default" size="small" />
-            {sessionInfo && (
-              <Chip 
-                label={`Last Updated: ${new Date(sessionInfo.lastUpdateTime * 1000).toLocaleTimeString()}`} 
-                color="default" 
-                size="small" 
-              />
-            )}
-          </Box>
-        </Box>
-
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Messages Area */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-          {messages.length === 0 ? (
-            <Alert severity="info" sx={{ mb: 2 }}>
+        <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
+          {!sessionCreated && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                🔄 <strong>Initializing session...</strong> Please wait while we set up your analysis session.
+              </Typography>
+            </Alert>
+          )}
+          
+          {sessionCreated && messages.length === 0 ? (
+            <Alert severity="success" sx={{ mb: 2 }}>
               <Typography variant="body2" gutterBottom>
-                <strong>Welcome!</strong> Ask me to analyze your business or product. 
+                <strong>✅ Session Ready!</strong> Ask me to analyze your business or product. 
               </Typography>
               <Typography variant="body2" gutterBottom>
                 <strong>Examples:</strong>
@@ -229,9 +256,62 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
                     {message.content}
                   </Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mt: 1 }}>
-                    {new Date(message.timestamp).toLocaleTimeString()}
-                  </Typography>
+                  {message.metadata?.hasInfographic && (
+                    <Alert severity="info" sx={{ mt: 1, py: 0.5 }}>
+                      <Typography variant="caption">
+                        📊 This message contains {message.metadata.infographics?.length} infographic(s)
+                      </Typography>
+                      <Box sx={{ mt: 0.5 }}>
+                        {message.metadata.infographics?.map((infographic, index) => (
+                          <Button
+                            key={infographic.id}
+                            size="small"
+                            variant="outlined"
+                            sx={{ mr: 1, mb: 0.5, fontSize: '0.7rem', py: 0.25 }}
+                            onClick={() => {
+                              console.log('View infographic:', infographic.id);
+                              handleViewInfographic(infographic);
+                            }}
+                          >
+                            View Infographic {index + 1}
+                          </Button>
+                        ))}
+                      </Box>
+                    </Alert>
+                  )}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      {message.metadata?.hasMultipleParts && (
+                        <Chip
+                          label={`${message.partCount} parts`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ 
+                            height: 16, 
+                            fontSize: '0.6rem',
+                            opacity: 0.7,
+                            '& .MuiChip-label': { px: 0.5 }
+                          }}
+                        />
+                      )}
+                      {message.metadata?.hasInfographic && (
+                        <Chip
+                          label="📊 Infographic"
+                          size="small"
+                          color="secondary"
+                          variant="filled"
+                          sx={{ 
+                            height: 16, 
+                            fontSize: '0.6rem',
+                            '& .MuiChip-label': { px: 0.5 }
+                          }}
+                        />
+                      )}
+                    </Box>
+                  </Box>
                 </CardContent>
               </Card>
             </Box>
@@ -259,15 +339,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, onBackToSess
             <Button
               variant="contained"
               onClick={handleSendMessage}
-              disabled={loading || !inputMessage.trim()}
+              disabled={loading || !inputMessage.trim() || !sessionCreated}
               sx={{ minWidth: 'auto', px: 2 }}
             >
               {loading ? <CircularProgress size={24} /> : <SendIcon />}
             </Button>
           </Box>
         </Box>
-      </Paper>
-    </Container>
+
+      {/* Infographic Viewer Dialog */}
+      <InfographicViewer
+        infographic={selectedInfographic}
+        open={infographicViewerOpen}
+        onClose={handleCloseInfographicViewer}
+      />
+    </Box>
   );
 };
 
