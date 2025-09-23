@@ -1,5 +1,16 @@
 google-adk
 # Requirements for AgentSwot Storage Server
 
-pymongo==4.6.0
+# FastAPI and web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
 python-multipart==0.0.6
+
+# HTTP client for ADK communication
+httpx==0.25.2
+
+# Database
+pymongo==4.6.0
+
+# Data validation
+pydantic==2.5.0
