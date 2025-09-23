@@ -11,6 +11,7 @@ import type { UserSession } from '../types';
 
 // Storage Server Configuration
 const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || 'http://127.0.0.1:8001';
+const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '120000');
 
 // API Response Types
 export interface StorageApiSessionResponse {

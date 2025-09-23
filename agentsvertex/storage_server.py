@@ -17,11 +17,18 @@ import asyncio
 import json
 import re
 from urllib.parse import urljoin
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configuration
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb+srv://chandanbarada727_db_user:chandanbarada727@a0.emc8jsx.mongodb.net/?retryWrites=true&w=majority&appName=A0")
 DB_NAME = os.getenv("DB_NAME", "agentswot")
 ADK_BASE_URL = os.getenv("ADK_BASE_URL", "http://127.0.0.1:8000")
+STORAGE_SERVER_HOST = os.getenv("STORAGE_SERVER_HOST", "0.0.0.0")
+STORAGE_SERVER_PORT = int(os.getenv("STORAGE_SERVER_PORT", "8001"))
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -689,13 +696,14 @@ if __name__ == "__main__":
     print("🚀 Starting AgentSwot Storage & Integration API Server...")
     print(f"📊 Database: {DB_NAME}")
     print(f"🔗 ADK URL: {ADK_BASE_URL}")
-    print("🌐 Server will be available at: http://localhost:8001")
-    print("📚 API docs will be available at: http://localhost:8001/docs")
+    print(f"🌐 Server will be available at: http://{STORAGE_SERVER_HOST}:{STORAGE_SERVER_PORT}")
+    print(f"📚 API docs will be available at: http://{STORAGE_SERVER_HOST}:{STORAGE_SERVER_PORT}/docs")
+    print(f"🌍 Environment: {ENVIRONMENT}")
     
     uvicorn.run(
         "storage_server:app",
-        host="0.0.0.0",
-        port=8001,
-        reload=True,
+        host=STORAGE_SERVER_HOST,
+        port=STORAGE_SERVER_PORT,
+        reload=True if ENVIRONMENT == "development" else False,
         log_level="info"
     )
