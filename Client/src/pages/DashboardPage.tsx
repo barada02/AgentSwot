@@ -17,30 +17,33 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
+import { useSessionContext } from '../context/SessionContext';
+import { useStorageApi } from '../hooks/useStorageApi';
 import type { UserSession } from '../types';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [creatingSession, setCreatingSession] = useState(false);
+  const { createNewSession, clearCurrentSession } = useSessionContext();
+  const { createSession } = useStorageApi();
 
   const handleNewAnalysis = async () => {
     setCreatingSession(true);
     
     try {
-      // Create new session with dummy data (no actual API call)
-      const userSession: UserSession = {
-        userId: 'demo-user-123', // In real app, get from auth
-        sessionId: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        appName: 'multi_tool_agent', // For API calls
-      };
+      // Clear any existing session
+      clearCurrentSession();
       
-      console.log('Creating new analysis session:', userSession);
+      // Create new session
+      const newSession = createNewSession();
       
-      // Simulate session creation delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Creating new analysis session:', newSession);
       
-      // Navigate to AI page with session data
-      navigate('/ai', { state: { userSession } });
+      // Create session in backend
+      await createSession(newSession);
+      
+      // Navigate to AI page
+      navigate('/ai');
     } catch (error) {
       console.error('Failed to create session:', error);
       // Still navigate but let AI page handle session creation as fallback
