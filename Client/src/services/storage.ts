@@ -1,6 +1,7 @@
 import { toast } from 'react-toastify';
 import DatabaseService from './database';
 import { processMessageWithInfographics } from '../utils/messageUtils';
+import DataValidator from '../utils/dataValidator';
 import type { 
   ChatMessage, 
   InfographicData, 
@@ -40,28 +41,25 @@ class StorageService {
     try {
       const collection = this.db.getCollection<StoredSession>('sessions');
       
-      const session: StoredSession = {
-        sessionId: sessionData.sessionId,
+      // Validate input data structure
+      console.log('🔍 Validating session creation data...');
+      const userSession = {
         userId: sessionData.userId,
-        appName: sessionData.appName,
-        title: sessionData.title || 'New Analysis Session',
-        status: 'active',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        lastActivity: new Date(),
-        messageCount: 0,
-        hasInfographics: false,
-        tags: [],
-        metadata: {
-          totalTokens: 0,
-          avgResponseTime: 0,
-        },
+        sessionId: sessionData.sessionId,
+        appName: sessionData.appName
       };
+      
+      if (!DataValidator.validateUserSession(userSession)) {
+        throw new Error('Invalid session data structure');
+      }
+      
+      // Create validated session object
+      const session = DataValidator.createStoredSession(userSession, sessionData.title);
 
-      const result = await collection.insertOne(session);
+      const result = await collection.insertOne(session as StoredSession);
       console.log('✅ Session created in database:', sessionData.sessionId);
       
-      return { ...session, _id: result.insertedId };
+      return { ...session, _id: result.insertedId } as StoredSession;
     } catch (error) {
       console.error('Failed to create session:', error);
       toast.error('Failed to save session');

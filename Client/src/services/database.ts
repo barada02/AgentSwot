@@ -1,5 +1,6 @@
 import { MongoClient, Db, Collection } from 'mongodb';
 import type { Document } from 'mongodb';
+import EnvironmentChecker from '../utils/environmentChecker';
 
 interface DatabaseConfig {
   uri: string;
@@ -31,17 +32,27 @@ class DatabaseService {
   }
 
   async connect(): Promise<void> {
+    // Log environment status for debugging
+    EnvironmentChecker.logEnvironmentStatus();
+    
     if (!this.config.uri) {
       throw new Error('MongoDB URI not configured. Please set VITE_MONGODB_URI in your .env file.');
     }
 
     try {
+      console.log('🔄 Connecting to MongoDB Atlas...');
       this.client = new MongoClient(this.config.uri);
       await this.client.connect();
       this.db = this.client.db(this.config.dbName);
       console.log('✅ Connected to MongoDB Atlas');
+      console.log(`📁 Using database: ${this.config.dbName}`);
     } catch (error) {
       console.error('❌ Failed to connect to MongoDB:', error);
+      
+      // Provide helpful error context
+      const diagnostic = EnvironmentChecker.getQuickDiagnostic();
+      console.error('🔍 Quick diagnostic:', diagnostic);
+      
       throw error;
     }
   }

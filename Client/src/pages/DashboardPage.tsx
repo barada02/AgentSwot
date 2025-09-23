@@ -8,16 +8,22 @@ import {
   Grid,
   Paper,
   CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import {
   Add as AddIcon,
   TrendingUp as TrendingUpIcon,
   Assessment as AssessmentIcon,
   Speed as SpeedIcon,
+  ExpandMore as ExpandMoreIcon,
+  Storage as StorageIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useApi } from '../hooks/useApi';
+import StorageTestComponent from '../components/StorageTestComponent';
 import type { UserSession } from '../types';
 
 const DashboardPage: React.FC = () => {
@@ -183,6 +189,28 @@ const DashboardPage: React.FC = () => {
             </Paper>
           </Grid>
         </Grid>
+
+        {/* Storage Test Section */}
+        <Box sx={{ mt: 4 }}>
+          <Accordion>
+            <AccordionSummary 
+              expandIcon={<ExpandMoreIcon />}
+              sx={{ 
+                bgcolor: 'primary.main', 
+                color: 'white',
+                '&:hover': { bgcolor: 'primary.dark' }
+              }}
+            >
+              <StorageIcon sx={{ mr: 2 }} />
+              <Typography variant="h6">
+                🧪 MongoDB Storage Integration Test
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ p: 0 }}>
+              <StorageTestComponent />
+            </AccordionDetails>
+          </Accordion>
+        </Box>
       </Box>
     </DashboardLayout>
   );
