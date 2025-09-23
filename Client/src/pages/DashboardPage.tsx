@@ -23,7 +23,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { useApi } from '../hooks/useApi';
-import StorageTestComponent from '../components/StorageTestComponent';
+import BrowserStorageTest from '../components/BrowserStorageTest';
 import type { UserSession } from '../types';
 
 const DashboardPage: React.FC = () => {
@@ -207,7 +207,7 @@ const DashboardPage: React.FC = () => {
               </Typography>
             </AccordionSummary>
             <AccordionDetails sx={{ p: 0 }}>
-              <StorageTestComponent />
+              <BrowserStorageTest />
             </AccordionDetails>
           </Accordion>
         </Box>
