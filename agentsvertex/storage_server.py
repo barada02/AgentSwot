@@ -25,16 +25,26 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Configuration
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb+srv://chandanbarada727_db_user:chandanbarada727@a0.emc8jsx.mongodb.net/?retryWrites=true&w=majority&appName=A0")
+# Configuration - Remove hardcoded secrets!
+MONGODB_URI = os.getenv("MONGODB_URI")
+if not MONGODB_URI:
+    raise ValueError("MONGODB_URI environment variable is required but not set")
+
 DB_NAME = os.getenv("DB_NAME", "agentswot")
 ADK_BASE_URL = os.getenv("ADK_BASE_URL", "http://127.0.0.1:8000")
 STORAGE_SERVER_HOST = os.getenv("STORAGE_SERVER_HOST", "0.0.0.0")
 STORAGE_SERVER_PORT = int(os.getenv("STORAGE_SERVER_PORT", "8001"))
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
-# JWT Configuration
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your_super_secret_jwt_key_change_in_production")
+# JWT Configuration - Remove hardcoded secret!
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not JWT_SECRET_KEY:
+    raise ValueError("JWT_SECRET_KEY environment variable is required but not set")
+
+# Validate JWT secret strength
+if len(JWT_SECRET_KEY) < 32:
+    raise ValueError("JWT_SECRET_KEY must be at least 32 characters long for security")
+
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
