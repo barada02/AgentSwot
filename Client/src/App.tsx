@@ -5,7 +5,11 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 // Context
+import { AuthProvider } from './contexts/AuthContext';
 import { SessionProvider } from './context/SessionContext';
+
+// Components
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -99,26 +103,36 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <GlobalStyles styles={globalStyles} />
-      <SessionProvider>
-        <Router>
-          <Routes>
-            {/* Landing Page */}
-            <Route path="/" element={<LandingPage />} />
-            
-            {/* Authentication */}
-            <Route path="/auth" element={<AuthPage />} />
-            
-            {/* Dashboard */}
-            <Route path="/dashboard" element={<DashboardPage />} />
-            
-            {/* AI Analysis */}
-            <Route path="/ai" element={<AIPage />} />
-            
-            {/* Catch all - redirect to landing */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Router>
-      </SessionProvider>
+      <AuthProvider>
+        <SessionProvider>
+          <Router>
+            <Routes>
+              {/* Landing Page */}
+              <Route path="/" element={<LandingPage />} />
+              
+              {/* Authentication */}
+              <Route path="/auth" element={<AuthPage />} />
+              
+              {/* Dashboard */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              } />
+              
+              {/* AI Analysis */}
+              <Route path="/ai" element={
+                <ProtectedRoute>
+                  <AIPage />
+                </ProtectedRoute>
+              } />
+              
+              {/* Catch all - redirect to landing */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Router>
+        </SessionProvider>
+      </AuthProvider>
       
       {/* Toast Notifications */}
       <ToastContainer

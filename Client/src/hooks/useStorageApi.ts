@@ -2,6 +2,7 @@
  * Unified API hook for AgentSwot
  * Communicates only with Storage Server (which handles ADK integration)
  * New architecture: React → Storage Server → ADK Server
+ * Now includes user authentication
  */
 
 import { useState, useCallback } from 'react';
@@ -12,6 +13,33 @@ import type { UserSession } from '../types';
 // Storage Server Configuration
 const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || 'http://127.0.0.1:8001';
 const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '120000');
+
+// Authentication Types
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  lastLogin?: string;
+  sessionCount: number;
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+  token: string;
+  tokenType: string;
+}
+
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
 
 // API Response Types
 export interface StorageApiSessionResponse {
@@ -72,9 +100,121 @@ export interface StorageApiHealthResponse {
   };
 }
 
+// Token management helpers
+const getAuthToken = (): string | null => {
+  return localStorage.getItem('agentswot_token');
+};
+
+const setAuthToken = (token: string): void => {
+  localStorage.setItem('agentswot_token', token);
+};
+
+const removeAuthToken = (): void => {
+  localStorage.removeItem('agentswot_token');
+};
+
+// Create axios instance with auth interceptor
+const createApiClient = () => {
+  const client = axios.create({
+    baseURL: STORAGE_API_URL,
+    timeout: API_TIMEOUT,
+  });
+
+  // Request interceptor to add auth token
+  client.interceptors.request.use((config) => {
+    const token = getAuthToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+
+  return client;
+};
+
 export const useStorageApi = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const apiClient = createApiClient();
+
+  // ========================
+  // AUTHENTICATION METHODS
+  // ========================
+
+  const register = useCallback(async (userData: RegisterRequest): Promise<AuthResponse> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await apiClient.post('/auth/register', userData);
+      const authData: AuthResponse = response.data;
+
+      // Store token
+      setAuthToken(authData.token);
+      toast.success(`Welcome ${authData.user.name}! Registration successful.`);
+
+      return authData;
+    } catch (err: any) {
+      const message = err.response?.data?.detail || 'Registration failed';
+      setError(message);
+      toast.error(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const login = useCallback(async (credentials: LoginRequest): Promise<AuthResponse> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await apiClient.post('/auth/login', credentials);
+      const authData: AuthResponse = response.data;
+
+      // Store token
+      setAuthToken(authData.token);
+      toast.success(`Welcome back ${authData.user.name}!`);
+
+      return authData;
+    } catch (err: any) {
+      const message = err.response?.data?.detail || 'Login failed';
+      setError(message);
+      toast.error(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const logout = useCallback((): void => {
+    removeAuthToken();
+    toast.info('Logged out successfully');
+  }, []);
+
+  const getCurrentUser = useCallback(async (): Promise<AuthUser> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await apiClient.get('/auth/me');
+      return response.data;
+    } catch (err: any) {
+      const message = err.response?.data?.detail || 'Failed to get user information';
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const isAuthenticated = useCallback((): boolean => {
+    return getAuthToken() !== null;
+  }, []);
+
+  // ========================
+  // STORAGE API METHODS
+  // ========================
 
   // Health check - checks both MongoDB and ADK
   const checkHealth = useCallback(async (): Promise<StorageApiHealthResponse> => {
@@ -82,7 +222,7 @@ export const useStorageApi = () => {
       setLoading(true);
       setError(null);
       
-      const response = await axios.get(`${STORAGE_API_URL}/health`);
+      const response = await apiClient.get('/health');
       
       if (response.data.adk.healthy) {
         toast.success('All systems operational');
@@ -107,7 +247,7 @@ export const useStorageApi = () => {
       setLoading(true);
       setError(null);
       
-      const response = await axios.post(`${STORAGE_API_URL}/sessions`, {
+      const response = await apiClient.post('/sessions', {
         userId: userSession.userId,
         sessionId: userSession.sessionId,
         appName: userSession.appName
@@ -136,7 +276,7 @@ export const useStorageApi = () => {
       setLoading(true);
       setError(null);
       
-      const response = await axios.post(`${STORAGE_API_URL}/chat`, {
+      const response = await apiClient.post('/chat', {
         sessionId,
         userId,
         appName,
@@ -166,7 +306,7 @@ export const useStorageApi = () => {
       setLoading(true);
       setError(null);
       
-      const response = await axios.get(`${STORAGE_API_URL}/sessions/${sessionId}`);
+      const response = await apiClient.get(`/sessions/${sessionId}`);
       return response.data;
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Failed to get session';
@@ -184,7 +324,7 @@ export const useStorageApi = () => {
       setLoading(true);
       setError(null);
       
-      const response = await axios.get(`${STORAGE_API_URL}/conversations/${sessionId}`);
+      const response = await apiClient.get(`/conversations/${sessionId}`);
       return response.data;
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Failed to get conversation';
@@ -202,7 +342,7 @@ export const useStorageApi = () => {
       setLoading(true);
       setError(null);
       
-      const response = await axios.get(`${STORAGE_API_URL}/sessions/${sessionId}/infographics`);
+      const response = await apiClient.get(`/sessions/${sessionId}/infographics`);
       return response.data;
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Failed to get infographics';
@@ -220,7 +360,7 @@ export const useStorageApi = () => {
       setLoading(true);
       setError(null);
       
-      const response = await axios.get(`${STORAGE_API_URL}/sessions/${sessionId}/grounding`);
+      const response = await apiClient.get(`/sessions/${sessionId}/grounding`);
       return response.data;
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Failed to get grounding chunks';
@@ -232,17 +372,13 @@ export const useStorageApi = () => {
     }
   }, []);
 
-  // Get all sessions for a user
-  const getAllSessions = useCallback(async (userId?: string) => {
+  // Get all sessions for the authenticated user
+  const getAllSessions = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const url = userId 
-        ? `${STORAGE_API_URL}/sessions?userId=${userId}`
-        : `${STORAGE_API_URL}/sessions`;
-      
-      const response = await axios.get(url);
+      const response = await apiClient.get('/sessions');
       return response.data;
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Failed to get sessions';
@@ -260,7 +396,7 @@ export const useStorageApi = () => {
       setLoading(true);
       setError(null);
       
-      const response = await axios.delete(`${STORAGE_API_URL}/sessions/${sessionId}`);
+      const response = await apiClient.delete(`/sessions/${sessionId}`);
       toast.success('Session deleted successfully');
       return response.data;
     } catch (err: any) {
@@ -279,7 +415,7 @@ export const useStorageApi = () => {
       setLoading(true);
       setError(null);
       
-      const response = await axios.get(`${STORAGE_API_URL}/export/${sessionId}`);
+      const response = await apiClient.get(`/export/${sessionId}`);
       return response.data;
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Failed to export session';
@@ -297,7 +433,7 @@ export const useStorageApi = () => {
       setLoading(true);
       setError(null);
       
-      const response = await axios.get(`${STORAGE_API_URL}/stats`);
+      const response = await apiClient.get('/stats');
       return response.data;
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Failed to get stats';
@@ -313,6 +449,13 @@ export const useStorageApi = () => {
     // State
     loading,
     error,
+    
+    // Authentication
+    register,
+    login,
+    logout,
+    getCurrentUser,
+    isAuthenticated,
     
     // Health & Setup
     checkHealth,

@@ -2,11 +2,12 @@
 # Handles ADK integration and MongoDB storage
 # Single API layer for React frontend
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel, EmailStr
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 import pymongo
 from pymongo import MongoClient
 from bson import ObjectId
@@ -16,6 +17,8 @@ import httpx
 import asyncio
 import json
 import re
+import jwt
+import bcrypt
 from urllib.parse import urljoin
 from dotenv import load_dotenv
 
@@ -29,6 +32,11 @@ ADK_BASE_URL = os.getenv("ADK_BASE_URL", "http://127.0.0.1:8000")
 STORAGE_SERVER_HOST = os.getenv("STORAGE_SERVER_HOST", "0.0.0.0")
 STORAGE_SERVER_PORT = int(os.getenv("STORAGE_SERVER_PORT", "8001"))
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+# JWT Configuration
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your_super_secret_jwt_key_change_in_production")
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_HOURS = 24
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -50,7 +58,8 @@ app.add_middleware(
 client = MongoClient(MONGODB_URI)
 db = client[DB_NAME]
 
-# Collections - New structure for better data organization
+# Collections - Extended structure with user management
+users_collection = db.users
 sessions_collection = db.sessions
 conversations_collection = db.conversations
 infographics_collection = db.infographics
@@ -59,9 +68,35 @@ grounding_chunks_collection = db.grounding_chunks
 # HTTP client for ADK communication
 adk_client = httpx.AsyncClient(timeout=120.0)
 
+# Security
+security = HTTPBearer()
+
 # ========================
 # PYDANTIC MODELS
 # ========================
+
+# Authentication Models
+class UserRegisterRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+
+class UserLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    createdAt: str
+    lastLogin: Optional[str] = None
+    sessionCount: int = 0
+
+class AuthResponse(BaseModel):
+    user: UserResponse
+    token: str
+    tokenType: str = "bearer"
 
 # Request Models
 class CreateSessionRequest(BaseModel):
@@ -119,6 +154,54 @@ class GroundingChunkResponse(BaseModel):
     url: str
     snippet: str
     createdAt: str
+
+# ========================
+# AUTHENTICATION HELPERS
+# ========================
+
+def hash_password(password: str) -> str:
+    """Hash password using bcrypt"""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    """Verify password against hash"""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+def create_access_token(data: dict) -> str:
+    """Create JWT access token"""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+def verify_token(token: str) -> Optional[dict]:
+    """Verify JWT token and return payload"""
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.JWTError:
+        return None
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    """Get current user from JWT token"""
+    token = credentials.credentials
+    payload = verify_token(token)
+    
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    user_id = payload.get("user_id")
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    
+    # Get user from database
+    user = users_collection.find_one({"_id": ObjectId(user_id)})
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return serialize_doc(user)
 
 # ========================
 # HELPER FUNCTIONS
@@ -258,13 +341,130 @@ async def health_check():
     }
 
 # ========================
+# AUTHENTICATION ENDPOINTS
+# ========================
+
+@app.post("/auth/register", response_model=AuthResponse)
+async def register_user(request: UserRegisterRequest):
+    """Register a new user"""
+    try:
+        # Check if user already exists
+        existing_user = users_collection.find_one({"email": request.email})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Hash password
+        hashed_password = hash_password(request.password)
+        
+        # Create user document
+        user_doc = {
+            "name": request.name,
+            "email": request.email,
+            "password": hashed_password,
+            "createdAt": datetime.utcnow().isoformat(),
+            "lastLogin": None,
+            "sessionCount": 0
+        }
+        
+        # Insert user
+        result = users_collection.insert_one(user_doc)
+        user_id = str(result.inserted_id)
+        
+        # Create token
+        token = create_access_token({"user_id": user_id, "email": request.email})
+        
+        # Update last login
+        users_collection.update_one(
+            {"_id": result.inserted_id},
+            {"$set": {"lastLogin": datetime.utcnow().isoformat()}}
+        )
+        
+        # Prepare response
+        user_response = UserResponse(
+            id=user_id,
+            name=request.name,
+            email=request.email,
+            createdAt=user_doc["createdAt"],
+            lastLogin=datetime.utcnow().isoformat(),
+            sessionCount=0
+        )
+        
+        return AuthResponse(user=user_response, token=token)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+
+@app.post("/auth/login", response_model=AuthResponse)
+async def login_user(request: UserLoginRequest):
+    """Login user and return JWT token"""
+    try:
+        # Find user by email
+        user = users_collection.find_one({"email": request.email})
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        # Verify password
+        if not verify_password(request.password, user["password"]):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        # Create token
+        token = create_access_token({"user_id": str(user["_id"]), "email": user["email"]})
+        
+        # Update last login
+        users_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"lastLogin": datetime.utcnow().isoformat()}}
+        )
+        
+        # Get session count
+        session_count = sessions_collection.count_documents({"userId": str(user["_id"])})
+        
+        # Prepare response
+        user_response = UserResponse(
+            id=str(user["_id"]),
+            name=user["name"],
+            email=user["email"],
+            createdAt=user["createdAt"],
+            lastLogin=datetime.utcnow().isoformat(),
+            sessionCount=session_count
+        )
+        
+        return AuthResponse(user=user_response, token=token)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+
+@app.get("/auth/me", response_model=UserResponse)
+async def get_current_user_info(current_user: dict = Depends(get_current_user)):
+    """Get current user information"""
+    # Get session count
+    session_count = sessions_collection.count_documents({"userId": current_user["_id"]})
+    
+    return UserResponse(
+        id=current_user["_id"],
+        name=current_user["name"],
+        email=current_user["email"],
+        createdAt=current_user["createdAt"],
+        lastLogin=current_user.get("lastLogin"),
+        sessionCount=session_count
+    )
+
+# ========================
 # SESSION MANAGEMENT
 # ========================
 
 @app.post("/sessions", response_model=SessionResponse)
-async def create_session(request: CreateSessionRequest):
-    """Create a new session with ADK and store in MongoDB"""
+async def create_session(request: CreateSessionRequest, current_user: dict = Depends(get_current_user)):
+    """Create a new session with ADK and store in MongoDB - User Authenticated"""
     try:
+        # Verify the session is being created for the authenticated user
+        if request.userId != current_user["_id"]:
+            raise HTTPException(status_code=403, detail="Cannot create session for another user")
+        
         # 1. Check ADK health first
         if not await check_adk_health():
             raise HTTPException(status_code=503, detail="ADK server is not available")
@@ -330,13 +530,20 @@ async def get_session(session_id: str):
 # ========================
 
 @app.post("/chat", response_model=Dict[str, Any])
-async def send_message(request: SendMessageRequest):
-    """Send message to ADK, process response, and store everything in MongoDB"""
+async def send_message(request: SendMessageRequest, current_user: dict = Depends(get_current_user)):
+    """Send message to ADK, process response, and store everything in MongoDB - User Authenticated"""
     try:
-        # 1. Check if session exists
-        session = sessions_collection.find_one({"sessionId": request.sessionId})
+        # 1. Check if session exists and belongs to the authenticated user
+        session = sessions_collection.find_one({
+            "sessionId": request.sessionId,
+            "userId": current_user["_id"]
+        })
         if not session:
-            raise HTTPException(status_code=404, detail="Session not found. Create session first.")
+            raise HTTPException(status_code=404, detail="Session not found or not accessible")
+        
+        # Verify the message is being sent by the session owner
+        if request.userId != current_user["_id"]:
+            raise HTTPException(status_code=403, detail="Cannot send message for another user")
         
         # 2. Send message to ADK (Endpoint #3)
         adk_run_payload = {
@@ -507,9 +714,17 @@ async def process_and_store_conversation(session_id: str, full_session_data: Dic
 # ========================
 
 @app.get("/conversations/{session_id}", response_model=ConversationResponse)
-async def get_conversation(session_id: str):
-    """Get complete conversation for a session"""
+async def get_conversation(session_id: str, current_user: dict = Depends(get_current_user)):
+    """Get complete conversation for a session - User Authenticated"""
     try:
+        # Verify session belongs to the authenticated user
+        session = sessions_collection.find_one({
+            "sessionId": session_id,
+            "userId": current_user["_id"]
+        })
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found or not accessible")
+        
         conversation = conversations_collection.find_one({"sessionId": session_id})
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation not found")
@@ -526,6 +741,38 @@ async def get_conversation(session_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get conversation: {str(e)}")
+
+@app.get("/sessions", response_model=List[SessionResponse])
+async def get_user_sessions(current_user: dict = Depends(get_current_user)):
+    """Get all sessions for the authenticated user"""
+    try:
+        sessions = list(sessions_collection.find({"userId": current_user["_id"]}).sort("createdAt", -1))
+        
+        session_responses = []
+        for session in sessions:
+            # Get message count from conversations
+            conversation = conversations_collection.find_one({"sessionId": session["sessionId"]})
+            message_count = len(conversation.get("messages", [])) if conversation else 0
+            
+            # Check for infographics
+            has_infographics = infographics_collection.count_documents({"sessionId": session["sessionId"]}) > 0
+            
+            session_responses.append(SessionResponse(
+                sessionId=session["sessionId"],
+                userId=session["userId"],
+                appName=session["appName"],
+                status=session["status"],
+                createdAt=session["createdAt"],
+                lastActivity=session["lastActivity"],
+                messageCount=message_count,
+                hasInfographics=has_infographics,
+                adkSessionData=session.get("adkSessionData")
+            ))
+        
+        return session_responses
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get user sessions: {str(e)}")
 
 @app.get("/sessions/{session_id}/infographics")
 async def get_session_infographics(session_id: str):

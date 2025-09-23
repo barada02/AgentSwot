@@ -8,8 +8,10 @@ import {
   Button,
   Divider,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import LandingLayout from '../layouts/LandingLayout';
 
 const AuthPage: React.FC = () => {
@@ -17,12 +19,14 @@ const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode') || 'login';
   const demoQuery = searchParams.get('query');
+  const { login, register, loading } = useAuth();
   
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
   });
+  const [error, setError] = useState<string | null>(null);
 
   const isSignUp = mode === 'signup';
   const isDemo = mode === 'demo';
@@ -32,24 +36,56 @@ const AuthPage: React.FC = () => {
       ...prev,
       [field]: event.target.value
     }));
+    // Clear error when user starts typing
+    if (error) setError(null);
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setError(null);
     
-    // Simple validation - just check if name is provided
-    if (!formData.name.trim()) {
-      alert('Please enter your name');
-      return;
-    }
+    try {
+      if (isDemo) {
+        // For demo mode, just check name is provided
+        if (!formData.name.trim()) {
+          setError('Please enter your name for the demo');
+          return;
+        }
+        // Navigate to analysis with the demo query
+        if (demoQuery) {
+          navigate(`/analysis/new?demo=${encodeURIComponent(demoQuery)}`);
+        } else {
+          navigate('/dashboard');
+        }
+        return;
+      }
 
-    // For now, just navigate to dashboard
-    // Later we'll integrate with real authentication
-    if (isDemo && demoQuery) {
-      // Navigate to analysis with the demo query
-      navigate(`/analysis/new?demo=${encodeURIComponent(demoQuery)}`);
-    } else {
+      // Validation
+      if (!formData.email.trim()) {
+        setError('Please enter your email');
+        return;
+      }
+      if (!formData.password.trim()) {
+        setError('Please enter your password');
+        return;
+      }
+      if (isSignUp && !formData.name.trim()) {
+        setError('Please enter your name');
+        return;
+      }
+
+      // Authenticate
+      if (isSignUp) {
+        await register(formData.name, formData.email, formData.password);
+      } else {
+        await login(formData.email, formData.password);
+      }
+
+      // Navigate to dashboard on success
       navigate('/dashboard');
+      
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed');
     }
   };
 
@@ -97,28 +133,29 @@ const AuthPage: React.FC = () => {
               }
             </Typography>
 
-            {isDemo && demoQuery && (
-              <Alert severity="info" sx={{ mb: 3 }}>
-                <Typography variant="body2">
-                  <strong>Demo Query:</strong> {demoQuery}
-                </Typography>
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {error}
               </Alert>
             )}
 
             <form onSubmit={handleSubmit}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <TextField
-                  fullWidth
-                  label="Your Name"
-                  value={formData.name}
-                  onChange={handleInputChange('name')}
-                  required
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2,
-                    }
-                  }}
-                />
+                {(isSignUp || isDemo) && (
+                  <TextField
+                    fullWidth
+                    label="Your Name"
+                    value={formData.name}
+                    onChange={handleInputChange('name')}
+                    required
+                    disabled={loading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      }
+                    }}
+                  />
+                )}
 
                 {!isDemo && (
                   <>
@@ -128,7 +165,8 @@ const AuthPage: React.FC = () => {
                       type="email"
                       value={formData.email}
                       onChange={handleInputChange('email')}
-                      required={isSignUp}
+                      required
+                      disabled={loading}
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: 2,
@@ -143,6 +181,7 @@ const AuthPage: React.FC = () => {
                       value={formData.password}
                       onChange={handleInputChange('password')}
                       required
+                      disabled={loading}
                       sx={{
                         '& .MuiOutlinedInput-root': {
                           borderRadius: 2,
@@ -157,6 +196,8 @@ const AuthPage: React.FC = () => {
                   fullWidth
                   variant="contained"
                   size="large"
+                  disabled={loading}
+                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : undefined}
                   sx={{
                     py: 1.5,
                     borderRadius: 2,
@@ -168,7 +209,14 @@ const AuthPage: React.FC = () => {
                     }
                   }}
                 >
-                  {isDemo ? 'Start Demo' : isSignUp ? 'Create Account' : 'Sign In'}
+                  {loading 
+                    ? 'Please wait...' 
+                    : isDemo 
+                      ? 'Start Demo' 
+                      : isSignUp 
+                        ? 'Create Account' 
+                        : 'Sign In'
+                  }
                 </Button>
               </Box>
             </form>

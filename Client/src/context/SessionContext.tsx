@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import type { UserSession } from '../types';
 
 interface SessionContextType {
@@ -34,13 +35,18 @@ interface SessionProviderProps {
 }
 
 export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) => {
+  const { user } = useAuth();
   const [currentSession, setCurrentSession] = useState<UserSession | null>(null);
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
   const [isViewingHistory, setIsViewingHistory] = useState(false);
 
   const createNewSession = useCallback((): UserSession => {
+    if (!user) {
+      throw new Error('Cannot create session without authenticated user');
+    }
+    
     const newSession: UserSession = {
-      userId: 'demo-user-123', // In real app, get from auth
+      userId: user.id,
       sessionId: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       appName: 'multi_tool_agent',
     };
@@ -50,7 +56,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setIsViewingHistory(false);
     
     return newSession;
-  }, []);
+  }, [user]);
 
   const clearCurrentSession = useCallback(() => {
     setCurrentSession(null);
