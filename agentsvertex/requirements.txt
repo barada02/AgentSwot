@@ -1,1 +1,5 @@
 google-adk
+# Requirements for AgentSwot Storage Server
+
+pymongo==4.6.0
+python-multipart==0.0.6

@@ -8,34 +8,26 @@ import {
   Grid,
   Paper,
   CircularProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
 } from '@mui/material';
 import {
   Add as AddIcon,
   TrendingUp as TrendingUpIcon,
   Assessment as AssessmentIcon,
   Speed as SpeedIcon,
-  ExpandMore as ExpandMoreIcon,
-  Storage as StorageIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
-import { useApi } from '../hooks/useApi';
-import BrowserStorageTest from '../components/BrowserStorageTest';
 import type { UserSession } from '../types';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { createSession } = useApi();
   const [creatingSession, setCreatingSession] = useState(false);
 
   const handleNewAnalysis = async () => {
     setCreatingSession(true);
     
     try {
-      // Create new session
+      // Create new session with dummy data (no actual API call)
       const userSession: UserSession = {
         userId: 'demo-user-123', // In real app, get from auth
         sessionId: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -43,7 +35,9 @@ const DashboardPage: React.FC = () => {
       };
       
       console.log('Creating new analysis session:', userSession);
-      await createSession(userSession);
+      
+      // Simulate session creation delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Navigate to AI page with session data
       navigate('/ai', { state: { userSession } });
@@ -189,28 +183,6 @@ const DashboardPage: React.FC = () => {
             </Paper>
           </Grid>
         </Grid>
-
-        {/* Storage Test Section */}
-        <Box sx={{ mt: 4 }}>
-          <Accordion>
-            <AccordionSummary 
-              expandIcon={<ExpandMoreIcon />}
-              sx={{ 
-                bgcolor: 'primary.main', 
-                color: 'white',
-                '&:hover': { bgcolor: 'primary.dark' }
-              }}
-            >
-              <StorageIcon sx={{ mr: 2 }} />
-              <Typography variant="h6">
-                🧪 MongoDB Storage Integration Test
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ p: 0 }}>
-              <BrowserStorageTest />
-            </AccordionDetails>
-          </Accordion>
-        </Box>
       </Box>
     </DashboardLayout>
   );
