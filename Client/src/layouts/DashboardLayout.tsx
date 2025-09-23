@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   AppBar,
@@ -10,12 +10,18 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  IconButton,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
   Psychology as AIIcon,
+  AccountCircle as AccountIcon,
+  Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import BaseLayout from './BaseLayout';
 import SessionHistorySection from '../components/SessionHistorySection';
 
@@ -34,15 +40,27 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    handleMenuClose();
+  };
 
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'AI', icon: <AIIcon />, path: '/ai' },
   ];
-
-  const user = {
-    name: 'John Doe',
-  };
 
   return (
     <BaseLayout>
@@ -200,18 +218,57 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
           {/* User Avatar at Bottom */}
           <Box sx={{ p: 2, mt: 'auto' }}>
-            <Avatar
-              sx={{
-                width: 40,
-                height: 40,
-                bgcolor: '#6366f1',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                mx: showSessionHistory ? 0 : 'auto',
+            <IconButton
+              onClick={handleMenuOpen}
+              sx={{ p: 0, width: '100%', borderRadius: 2 }}
+            >
+              <Avatar
+                sx={{
+                  width: 40,
+                  height: 40,
+                  bgcolor: '#6366f1',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  mx: showSessionHistory ? 0 : 'auto',
+                }}
+              >
+                {user?.name.split(' ').map(n => n[0]).join('') || 'U'}
+              </Avatar>
+            </IconButton>
+            
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
+              anchorOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+              transformOrigin={{
+                vertical: 'bottom',
+                horizontal: 'left',
               }}
             >
-              {user.name.split(' ').map(n => n[0]).join('')}
-            </Avatar>
+              <MenuItem>
+                <ListItemIcon>
+                  <AccountIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary={user?.name || 'User'} />
+              </MenuItem>
+              <MenuItem>
+                <ListItemText 
+                  primary={user?.email || 'No email'} 
+                  sx={{ fontSize: '0.8rem', color: 'text.secondary' }}
+                />
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={handleLogout}>
+                <ListItemIcon>
+                  <LogoutIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Logout" />
+              </MenuItem>
+            </Menu>
           </Box>
         </Box>
         {/* Main Content Area */}

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Paper,
   Typography,
   Tab,
   Tabs,
@@ -9,9 +8,7 @@ import {
   CardContent,
   Avatar,
   Chip,
-  Button,
   Skeleton,
-  Divider,
   List,
   ListItem,
   ListItemText,
@@ -23,19 +20,15 @@ import {
   Image,
   Link as LinkIcon,
   OpenInNew,
-  Refresh,
-  PlayArrow,
 } from '@mui/icons-material';
 import { useStorageApi } from '../hooks/useStorageApi';
 import InfographicViewer from './InfographicViewer';
 import type { 
-  StorageApiConversationResponse,
-  StorageApiSessionResponse 
+  StorageApiConversationResponse
 } from '../hooks/useStorageApi';
 
 interface SessionDetailViewProps {
   sessionId: string;
-  onContinueChat: (sessionId: string) => void;
 }
 
 interface TabPanelProps {
@@ -65,7 +58,6 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index, ...other })
 
 const SessionDetailView: React.FC<SessionDetailViewProps> = ({
   sessionId,
-  onContinueChat,
 }) => {
   const [tabValue, setTabValue] = useState(0);
   const [conversation, setConversation] = useState<StorageApiConversationResponse | null>(null);
@@ -155,14 +147,6 @@ const SessionDetailView: React.FC<SessionDetailViewProps> = ({
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Session Analysis
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<PlayArrow />}
-            onClick={() => onContinueChat(sessionId)}
-            sx={{ borderRadius: 2 }}
-          >
-            Continue Chat
-          </Button>
         </Box>
         
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>

@@ -17,6 +17,7 @@ import {
   MoreVert,
 } from '@mui/icons-material';
 import { useStorageApi } from '../hooks/useStorageApi';
+import { useAuth } from '../contexts/AuthContext';
 import type { StorageApiSessionResponse } from '../hooks/useStorageApi';
 
 interface SessionHistorySectionProps {
@@ -31,6 +32,7 @@ const SessionHistorySection: React.FC<SessionHistorySectionProps> = ({
   const [sessions, setSessions] = useState<StorageApiSessionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const { getAllSessions } = useStorageApi();
+  const { user } = useAuth();
 
   useEffect(() => {
     loadSessions();
@@ -39,7 +41,7 @@ const SessionHistorySection: React.FC<SessionHistorySectionProps> = ({
   const loadSessions = async () => {
     try {
       setLoading(true);
-      const sessionsData = await getAllSessions('demo-user-123'); // In real app, get from auth
+      const sessionsData = await getAllSessions(); // Now uses authenticated user
       setSessions(sessionsData);
     } catch (error) {
       console.error('Failed to load sessions:', error);

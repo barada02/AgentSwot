@@ -11,17 +11,14 @@ import { useSessionContext } from '../context/SessionContext';
 import { useStorageApi } from '../hooks/useStorageApi';
 
 const AIPage: React.FC = () => {
-  const { 
+  const {
     currentSession,
     createNewSession,
     viewingSessionId,
     setViewingSessionId,
     isViewingHistory,
     setIsViewingHistory,
-    setCurrentSession,
-  } = useSessionContext();
-  
-  const { createSession } = useStorageApi();
+  } = useSessionContext();  const { createSession } = useStorageApi();
 
   // Create fallback session if none exists
   useEffect(() => {
@@ -37,20 +34,8 @@ const AIPage: React.FC = () => {
   }, [currentSession, isViewingHistory, createNewSession, createSession]);
 
   const handleSessionSelect = (sessionId: string) => {
+    setIsViewingHistory(true);
     setViewingSessionId(sessionId);
-  };
-
-  const handleContinueChat = (sessionId: string) => {
-    // Convert sessionId to UserSession and make it current
-    const session = {
-      userId: 'demo-user-123', // In real app, get from auth
-      sessionId: sessionId,
-      appName: 'multi_tool_agent',
-    };
-    
-    setCurrentSession(session);
-    setViewingSessionId(null);
-    setIsViewingHistory(false);
   };
 
   return (
@@ -64,7 +49,6 @@ const AIPage: React.FC = () => {
           // Show historical session details
           <SessionDetailView
             sessionId={viewingSessionId}
-            onContinueChat={handleContinueChat}
           />
         ) : (
           // Show active chat interface
