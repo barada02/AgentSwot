@@ -32,7 +32,6 @@ const DashboardPage: React.FC = () => {
     avgResponseTime: string;
     recentSessions: StorageApiSessionResponse[];
     recentInfographic: { sessionId: string; title: string; createdAt: string } | null;
-    dailyActivity: number[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const { createNewSession, clearCurrentSession } = useSessionContext();
@@ -75,21 +74,6 @@ const DashboardPage: React.FC = () => {
             new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime())
           .slice(0, 1)[0];
 
-        // Calculate daily activity for last 7 days
-        const dailyActivity = Array.from({ length: 7 }, (_, i) => {
-          const date = new Date();
-          date.setDate(date.getDate() - (6 - i));
-          date.setHours(0, 0, 0, 0);
-          
-          const nextDate = new Date(date);
-          nextDate.setDate(nextDate.getDate() + 1);
-          
-          return sessions.filter((session: StorageApiSessionResponse) => {
-            const sessionDate = new Date(session.lastActivity);
-            return sessionDate >= date && sessionDate < nextDate;
-          }).length;
-        });
-
         setDashboardData({
           totalSessions,
           thisMonthSessions,
@@ -100,7 +84,6 @@ const DashboardPage: React.FC = () => {
             title: `Analysis ${recentInfographic.sessionId.slice(-8)}`,
             createdAt: recentInfographic.lastActivity
           } : null,
-          dailyActivity,
         });
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
@@ -111,7 +94,6 @@ const DashboardPage: React.FC = () => {
           avgResponseTime: '0s',
           recentSessions: [],
           recentInfographic: null,
-          dailyActivity: [0, 0, 0, 0, 0, 0, 0],
         });
       } finally {
         setLoading(false);
@@ -225,75 +207,6 @@ const DashboardPage: React.FC = () => {
             </Grid>
           ))}
         </Grid>
-
-        {/* Activity Chart */}
-        {!loading && dashboardData && dashboardData.totalSessions > 0 && 
-         dashboardData.dailyActivity.some(day => day > 0) && (
-          <Card sx={{ mb: 3, borderRadius: 3, border: '1px solid #e5e7eb' }}>
-            <CardContent sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: '#111827' }}>
-                Analysis Activity (Last 7 Days)
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'end', gap: 1, height: 80, mb: 1 }}>
-                {dashboardData.dailyActivity.map((dayActivity, i) => {
-                  const date = new Date();
-                  date.setDate(date.getDate() - (6 - i));
-                  
-                  const maxActivity = Math.max(1, Math.max(...dashboardData.dailyActivity));
-                  const height = Math.max(8, (dayActivity / maxActivity) * 100);
-                  
-                  return (
-                    <Box key={i} sx={{ 
-                      flex: 1, 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center',
-                      gap: 1
-                    }}>
-                      <Box sx={{
-                        width: '100%',
-                        height: `${height}%`,
-                        bgcolor: dayActivity > 0 ? '#6366f1' : '#e5e7eb',
-                        borderRadius: 1,
-                        transition: 'all 0.3s ease',
-                        cursor: 'pointer',
-                        position: 'relative',
-                        '&:hover': {
-                          bgcolor: dayActivity > 0 ? '#5855eb' : '#d1d5db',
-                          '&::after': {
-                            content: `"${dayActivity}"`,
-                            position: 'absolute',
-                            top: '-25px',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            bgcolor: '#374151',
-                            color: 'white',
-                            px: 1,
-                            py: 0.5,
-                            borderRadius: 1,
-                            fontSize: '0.7rem',
-                            whiteSpace: 'nowrap',
-                          }
-                        }
-                      }} />
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                        {date.toLocaleDateString('en-US', { weekday: 'short' })}
-                      </Typography>
-                    </Box>
-                  );
-                })}
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="caption" color="text.secondary">
-                  Daily analysis count
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Total: {dashboardData.dailyActivity.reduce((sum, day) => sum + day, 0)} in 7 days
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Quick Actions */}
         <Grid container spacing={3}>
