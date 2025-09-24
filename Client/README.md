@@ -6,6 +6,7 @@
 
 - **Interactive Chat Interface**: Real-time conversation with AI agents
 - **Dynamic Infographic Viewer**: Secure rendering of HTML/CSS/JS infographics
+- **PDF Export**: High-quality PDF generation from infographics (NEW!)
 - **Session Management**: Persistent user sessions with authentication
 - **Responsive Design**: Material-UI components optimized for all devices
 - **TypeScript**: Full type safety with comprehensive type definitions
@@ -20,6 +21,7 @@
 - **Axios**: HTTP client with request/response interceptors
 - **React Router**: Client-side routing
 - **React Hook Form**: Performant form handling
+- **html2canvas + jsPDF**: Client-side PDF generation
 
 ## 📁 Project Structure
 

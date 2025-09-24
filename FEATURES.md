@@ -26,7 +26,8 @@ To democratize professional business analysis by making sophisticated SWOT analy
 - **Intelligent Content Detection**: Advanced regex-based parsing of infographic content
 - **Secure Iframe Rendering**: Sandboxed execution environment for generated content
 - **Interactive Visualizations**: Full HTML/CSS/JavaScript support with interactivity
-- **Export Capabilities**: Download as HTML or open in new browser tab
+- **Multi-Format Export**: Download as HTML, open in new tab, or generate PDF
+- **PDF Generation**: High-quality PDF export with professional formatting (NEW!)
 - **Responsive Design**: Infographics adapt to different screen sizes
 - **Real-time Generation**: Dynamic content creation during conversation flow
 
@@ -123,10 +124,43 @@ Agent Response → JSON Detection → Content Parsing → HTML Cleaning → Safe
 Text + JSON → Pattern Match → Extract & Parse → Sanitize → Iframe Display
 ```
 
+##### 5. **Advanced PDF Export System (NEW!)**
+```typescript
+// High-quality PDF generation from HTML infographics
+const generateInfographicPDF = async (infographic: InfographicData) => {
+  // Create off-screen rendering environment
+  const canvas = await html2canvas(tempIframe, {
+    width: 1200,
+    height: calculatedHeight,
+    logging: false,
+    useCORS: true,
+  });
+  
+  // Generate optimized PDF with proper scaling
+  const pdf = new jsPDF({
+    orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+  
+  // Add image with professional layout
+  pdf.addImage(imgData, 'JPEG', x, y, finalWidth, finalHeight);
+  pdf.save(`agentswot-infographic-${timestamp}.pdf`);
+};
+```
+
+**PDF Export Features:**
+- **Client-Side Generation**: No server dependency, instant downloads
+- **High-Resolution Output**: Vector-based rendering for crisp visuals
+- **Smart Scaling**: Automatic orientation and aspect ratio optimization
+- **Professional Layout**: Proper margins, centering, and metadata
+- **Memory Efficient**: Automatic cleanup of temporary elements
+
 #### **Key Technical Achievements**
 
 1. **Zero-Configuration Rendering**: Automatic detection and processing without manual setup
 2. **Content Integrity**: Maintains HTML structure while ensuring security
+3. **Multi-Format Export**: HTML, interactive view, and PDF generation
 3. **Multi-format Support**: Handles various HTML/CSS/JavaScript combinations
 4. **Performance Optimization**: Efficient parsing with minimal overhead
 5. **Error Resilience**: Graceful handling of malformed content
