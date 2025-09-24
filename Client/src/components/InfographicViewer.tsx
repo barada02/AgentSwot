@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -9,12 +9,16 @@ import {
   IconButton,
   Typography,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   Close as CloseIcon,
   OpenInNew as OpenInNewIcon,
   Download as DownloadIcon,
+  PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
+import { openInfographicInNewTab } from '../utils/pdfGenerator';
+import { generateInfographicPDFAlternative, generateSimplePDF } from '../utils/pdfGeneratorAlternative';
 import type { InfographicData } from '../types';
 
 interface InfographicViewerProps {
@@ -28,15 +32,11 @@ const InfographicViewer: React.FC<InfographicViewerProps> = ({
   open,
   onClose,
 }) => {
+  const [pdfLoading, setPdfLoading] = useState(false);
+
   const handleOpenInNewTab = () => {
     if (!infographic) return;
-    
-    const blob = new Blob([infographic.htmlCode], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    
-    // Clean up the URL after a delay
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    openInfographicInNewTab(infographic);
   };
 
   const handleDownload = () => {
@@ -46,11 +46,38 @@ const InfographicViewer: React.FC<InfographicViewerProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `infographic-${infographic.id}.html`;
+    a.download = `agentswot-infographic-${infographic.id}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!infographic) return;
+    
+    try {
+      setPdfLoading(true);
+      
+      // Use the simple method as primary since it works well
+      console.log('📄 Generating PDF from infographic...');
+      await generateSimplePDF(infographic, (step) => console.log(step));
+      console.log('✅ PDF generated successfully!');
+      
+    } catch (error) {
+      console.error('PDF generation failed, trying alternative method:', error);
+      
+      // Fallback to alternative method
+      try {
+        await generateInfographicPDFAlternative(infographic);
+        console.log('✅ PDF generated with alternative method!');
+      } catch (altError) {
+        console.error('All PDF generation methods failed:', altError);
+        alert('Failed to generate PDF. Please try opening the infographic in a new tab and using your browser\'s print to PDF feature.');
+      }
+    } finally {
+      setPdfLoading(false);
+    }
   };
 
   if (!infographic) {
@@ -132,6 +159,16 @@ const InfographicViewer: React.FC<InfographicViewerProps> = ({
             sx={{ mr: 1 }}
           >
             Download HTML
+          </Button>
+          <Button
+            startIcon={pdfLoading ? <CircularProgress size={16} color="inherit" /> : <PdfIcon />}
+            onClick={handleDownloadPDF}
+            variant="outlined"
+            size="small"
+            sx={{ mr: 1 }}
+            disabled={pdfLoading}
+          >
+            {pdfLoading ? 'Generating...' : 'Download PDF'}
           </Button>
           <Button onClick={onClose} variant="contained" size="small">
             Close
