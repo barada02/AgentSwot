@@ -24,6 +24,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import BaseLayout from './BaseLayout';
 import SessionHistorySection from '../components/SessionHistorySection';
+import logoImage from '../assets/logo.png';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -90,18 +91,27 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 width: 48,
                 height: 48,
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                background: 'white',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'white',
-                fontWeight: 700,
-                fontSize: '1.2rem',
                 mb: showSessionHistory ? 0 : 4,
                 flexShrink: 0,
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                overflow: 'hidden',
               }}
             >
-              AS
+              <img 
+                src={logoImage} 
+                alt="AgentSwot Logo" 
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  padding: '4px'
+                }}
+              />
             </Box>
 
             {/* Navigation Icons */}
