@@ -10,33 +10,38 @@ import {
   Card,
   CardContent,
   Avatar,
-  Divider,
 } from '@mui/material';
 import {
   Send as SendIcon,
   Person as PersonIcon,
   SmartToy as BotIcon,
 } from '@mui/icons-material';
-import { useApi } from '../hooks/useApi';
-import { countTextParts, debugMessageParts, processMessageWithInfographics } from '../utils/messageUtils';
+import { useStorageApi } from '../hooks/useStorageApi';
 import InfographicViewer from './InfographicViewer';
-import type { UserSession, ChatMessage, RunRequest, InfographicData } from '../types';
+import type { UserSession, InfographicData } from '../types';
 
 interface ChatInterfaceProps {
   userSession: UserSession;
-  sessionCreated?: boolean; // Optional prop to indicate if session is already created
+  sessionCreated?: boolean;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, sessionCreated: propSessionCreated }) => {
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+  infographics?: InfographicData[];
+}
+
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, sessionCreated = false }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [selectedInfographic, setSelectedInfographic] = useState<InfographicData | null>(null);
   const [infographicViewerOpen, setInfographicViewerOpen] = useState(false);
-  const [sessionCreated, setSessionCreated] = useState(propSessionCreated || false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const sessionInitialized = useRef(propSessionCreated || false); // If session already created, mark as initialized
   
-  const { loading, createSession, sendMessage } = useApi();
+  const { loading, sendMessage, getConversation } = useStorageApi();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -46,48 +51,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, sessionCreat
     scrollToBottom();
   }, [messages]);
 
-  // Create session when component mounts (only if not already created)
+  // Load existing conversation when component mounts
   useEffect(() => {
-    const initializeSession = async () => {
-      // If session already created from Dashboard, skip creation
-      if (propSessionCreated) {
-        console.log('Session already created from Dashboard, skipping...');
-        setSessionCreated(true);
-        return;
-      }
-      
-      // Prevent multiple session creation attempts
-      if (sessionInitialized.current) {
-        console.log('Session already initialized, skipping...');
-        return;
-      }
-      
-      sessionInitialized.current = true;
+    const loadConversation = async () => {
+      if (!userSession.sessionId) return;
       
       try {
-        console.log('Creating fallback session:', userSession);
-        await createSession(userSession);
-        setSessionCreated(true);
-        console.log('Fallback session created successfully');
+        const conversation = await getConversation(userSession.sessionId);
+        
+        // Convert storage API messages to ChatMessage format
+        const convertedMessages: ChatMessage[] = conversation.messages.map(msg => ({
+          id: msg.messageId,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          infographics: [], // Will be loaded separately if needed
+        }));
+        
+        setMessages(convertedMessages);
+        console.log('Loaded conversation:', convertedMessages);
       } catch (error) {
-        console.error('Failed to create fallback session:', error);
-        sessionInitialized.current = false; // Reset on error so we can retry
-        setSessionCreated(false);
+        console.log('No existing conversation found or failed to load:', error);
+        // This is expected for new sessions
       }
     };
 
-    initializeSession();
-  }, [userSession, createSession, propSessionCreated]); // Added propSessionCreated to dependencies
+    if (sessionCreated) {
+      loadConversation();
+    }
+  }, [userSession.sessionId, sessionCreated, getConversation]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
     
-    // Check if session is created before sending message
-    if (!sessionCreated) {
-      console.error('Session not created yet. Please wait...');
-      return;
-    }
-
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -98,84 +94,44 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, sessionCreat
     setMessages(prev => [...prev, userMessage]);
     const currentMessage = inputMessage;
     setInputMessage('');
-
-    // Add a temporary "thinking" message
-    const thinkingMessage: ChatMessage = {
-      id: 'thinking-' + Date.now(),
-      role: 'assistant',
-      content: '🤔 Analyzing your request... This may take up to 2-3 minutes for a comprehensive SWOT analysis.',
-      timestamp: Date.now(),
-    };
-    setMessages(prev => [...prev, thinkingMessage]);
+    setError(null);
 
     try {
-      const runRequest: RunRequest = {
-        app_name: userSession.appName,
-        user_id: userSession.userId,
-        session_id: userSession.sessionId,
-        new_message: {
-          role: 'user',
-          parts: [{ text: currentMessage }],
-        },
-        streaming: false,
+      // Send message using Storage API
+      const response = await sendMessage(
+        userSession.sessionId,
+        userSession.userId,
+        currentMessage,
+        userSession.appName
+      );
+
+      // Create assistant message from response
+      const assistantMessage: ChatMessage = {
+        id: response.messageId,
+        role: 'assistant',
+        content: response.content,
+        timestamp: response.timestamp,
+        infographics: response.infographics.map((inf, index) => ({
+          id: inf.id,
+          contentType: inf.contentType,
+          htmlCode: inf.htmlCode,
+          rawCode: inf.htmlCode,
+          partIndex: index,
+        })),
       };
 
-      const responses = await sendMessage(runRequest);
+      setMessages(prev => [...prev, assistantMessage]);
       
-      // Remove the thinking message and add the actual response
-      setMessages(prev => prev.filter(msg => msg.id !== thinkingMessage.id));
-      
-      if (responses && responses.length > 0) {
-        const response = responses[0];
-        
-        // Process message with infographic detection
-        const processedMessage = processMessageWithInfographics(response.content);
-        const partCount = countTextParts(response.content);
-        
-        // Debug logging for multi-part messages and infographics
-        if (partCount > 1) {
-          debugMessageParts(response.content, `Agent Response (${partCount} parts)`);
-        }
-        
-        if (processedMessage.hasInfographics) {
-          console.log(`🎨 Found ${processedMessage.infographics.length} infographic(s) in response:`, processedMessage.infographics);
-        }
-        
-        const agentMessage: ChatMessage = {
-          id: response.id,
-          role: 'assistant',
-          content: processedMessage.text,
-          timestamp: response.timestamp,
-          partCount: partCount,
-          metadata: {
-            hasMultipleParts: partCount > 1,
-            originalParts: response.content.parts,
-            hasInfographic: processedMessage.hasInfographics,
-            infographics: processedMessage.infographics,
-          },
-        };
-        
-        setMessages(prev => [...prev, agentMessage]);
+      if (response.infographics.length > 0) {
+        console.log('Received infographics:', response.infographics);
       }
+      
     } catch (error: any) {
       console.error('Failed to send message:', error);
+      setError(error.message || 'Failed to send message');
       
-      // Remove the thinking message
-      setMessages(prev => prev.filter(msg => msg.id !== thinkingMessage.id));
-      
-      let errorMessage = 'Sorry, I encountered an error processing your request. Please try again.';
-      
-      if (error.code === 'ECONNABORTED') {
-        errorMessage = 'The analysis is taking longer than expected. Please try with a shorter, more specific request or try again later.';
-      }
-      
-      const errorResponse: ChatMessage = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: errorMessage,
-        timestamp: Date.now(),
-      };
-      setMessages(prev => [...prev, errorResponse]);
+      // Remove the user message if sending failed
+      setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
     }
   };
 
@@ -186,175 +142,143 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userSession, sessionCreat
     }
   };
 
-  const handleViewInfographic = (infographic: InfographicData) => {
+  const openInfographic = (infographic: InfographicData) => {
     setSelectedInfographic(infographic);
     setInfographicViewerOpen(true);
   };
 
-  const handleCloseInfographicViewer = () => {
-    setInfographicViewerOpen(false);
-    setSelectedInfographic(null);
+  const formatTimestamp = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString();
   };
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        {/* Messages Area */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
-          {!sessionCreated && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              <Typography variant="body2">
-                🔄 <strong>Initializing session...</strong> Please wait while we set up your analysis session.
-              </Typography>
-            </Alert>
-          )}
-          
-          {sessionCreated && messages.length === 0 ? (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              <Typography variant="body2" gutterBottom>
-                <strong>✅ Session Ready!</strong> Ask me to analyze your business or product. 
-              </Typography>
-              <Typography variant="body2" gutterBottom>
-                <strong>Examples:</strong>
-              </Typography>
-              <Typography variant="body2" component="div">
-                • "I want to launch a product, it's a jar of healthy fruits"<br />
-                • "Analyze my coffee shop business idea"<br />
-                • "SWOT analysis for a mobile app for fitness tracking"
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
-                ⏱️ <em>Note: Comprehensive analysis may take 2-3 minutes</em>
-              </Typography>
-            </Alert>
-          ) : null}
+      {/* Messages Area */}
+      <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
-          {messages.map((message) => (
-            <Box
-              key={message.id}
-              sx={{
-                display: 'flex',
-                mb: 2,
-                flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
-              }}
-            >
-              <Avatar
-                sx={{
-                  mx: 1,
-                  bgcolor: message.role === 'user' ? 'primary.main' : 'secondary.main',
-                }}
-              >
-                {message.role === 'user' ? <PersonIcon /> : <BotIcon />}
-              </Avatar>
-              
-              <Card
-                sx={{
-                  maxWidth: '70%',
-                  bgcolor: message.role === 'user' ? 'primary.light' : 'grey.100',
-                  color: message.role === 'user' ? 'primary.contrastText' : 'text.primary',
-                }}
-              >
-                <CardContent sx={{ py: 1, px: 2, '&:last-child': { pb: 1 } }}>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+        {messages.length === 0 && (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <BotIcon sx={{ fontSize: 64, color: '#d1d5db', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary">
+              Start Your Business Analysis
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Describe your business idea and I'll help you create a comprehensive SWOT analysis
+            </Typography>
+          </Box>
+        )}
+
+        {messages.map((message) => (
+          <Card key={message.id} sx={{ mb: 3, border: '1px solid #e5e7eb' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                <Avatar
+                  sx={{
+                    bgcolor: message.role === 'user' ? '#6366f1' : '#10b981',
+                    width: 40,
+                    height: 40,
+                  }}
+                >
+                  {message.role === 'user' ? <PersonIcon /> : <BotIcon />}
+                </Avatar>
+                
+                <Box sx={{ flex: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                      {message.role === 'user' ? 'You' : 'AI Assistant'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatTimestamp(message.timestamp)}
+                    </Typography>
+                  </Box>
+                  
+                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', mb: 2 }}>
                     {message.content}
                   </Typography>
-                  {message.metadata?.hasInfographic && (
-                    <Alert severity="info" sx={{ mt: 1, py: 0.5 }}>
-                      <Typography variant="caption">
-                        📊 This message contains {message.metadata.infographics?.length} infographic(s)
+                  
+                  {/* Infographics */}
+                  {message.infographics && message.infographics.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                        Generated Infographics:
                       </Typography>
-                      <Box sx={{ mt: 0.5 }}>
-                        {message.metadata.infographics?.map((infographic, index) => (
-                          <Button
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        {message.infographics.map((infographic, index) => (
+                          <Chip
                             key={infographic.id}
-                            size="small"
+                            label={`View Infographic ${index + 1}`}
+                            onClick={() => openInfographic(infographic)}
+                            color="primary"
                             variant="outlined"
-                            sx={{ mr: 1, mb: 0.5, fontSize: '0.7rem', py: 0.25 }}
-                            onClick={() => {
-                              console.log('View infographic:', infographic.id);
-                              handleViewInfographic(infographic);
-                            }}
-                          >
-                            View Infographic {index + 1}
-                          </Button>
+                            sx={{ cursor: 'pointer' }}
+                          />
                         ))}
                       </Box>
-                    </Alert>
-                  )}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                      {new Date(message.timestamp).toLocaleTimeString()}
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      {message.metadata?.hasMultipleParts && (
-                        <Chip
-                          label={`${message.partCount} parts`}
-                          size="small"
-                          variant="outlined"
-                          sx={{ 
-                            height: 16, 
-                            fontSize: '0.6rem',
-                            opacity: 0.7,
-                            '& .MuiChip-label': { px: 0.5 }
-                          }}
-                        />
-                      )}
-                      {message.metadata?.hasInfographic && (
-                        <Chip
-                          label="📊 Infographic"
-                          size="small"
-                          color="secondary"
-                          variant="filled"
-                          sx={{ 
-                            height: 16, 
-                            fontSize: '0.6rem',
-                            '& .MuiChip-label': { px: 0.5 }
-                          }}
-                        />
-                      )}
                     </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Box>
-          ))}
-          
-          <div ref={messagesEndRef} />
+                  )}
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        ))}
+        
+        <div ref={messagesEndRef} />
+      </Box>
+
+      {/* Input Area */}
+      <Box sx={{ p: 3, borderTop: '1px solid #e5e7eb' }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+          <TextField
+            fullWidth
+            multiline
+            maxRows={4}
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Describe your business idea for SWOT analysis..."
+            disabled={loading}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+              },
+            }}
+          />
+          <Button
+            variant="contained"
+            onClick={handleSendMessage}
+            disabled={loading || !inputMessage.trim()}
+            startIcon={loading ? <CircularProgress size={20} /> : <SendIcon />}
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              py: 1.5,
+              minWidth: 120,
+            }}
+          >
+            {loading ? 'Sending...' : 'Send'}
+          </Button>
         </Box>
+      </Box>
 
-        <Divider />
-
-        {/* Input Area */}
-        <Box sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <TextField
-              fullWidth
-              multiline
-              maxRows={4}
-              placeholder="Describe your business or product for SWOT analysis..."
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={loading}
-              variant="outlined"
-            />
-            <Button
-              variant="contained"
-              onClick={handleSendMessage}
-              disabled={loading || !inputMessage.trim() || !sessionCreated}
-              sx={{ minWidth: 'auto', px: 2 }}
-            >
-              {loading ? <CircularProgress size={24} /> : <SendIcon />}
-            </Button>
-          </Box>
-        </Box>
-
-      {/* Infographic Viewer Dialog */}
-      <InfographicViewer
-        infographic={selectedInfographic}
-        open={infographicViewerOpen}
-        onClose={handleCloseInfographicViewer}
-      />
+      {/* Infographic Viewer */}
+      {selectedInfographic && (
+        <InfographicViewer
+          open={infographicViewerOpen}
+          onClose={() => {
+            setInfographicViewerOpen(false);
+            setSelectedInfographic(null);
+          }}
+          infographic={selectedInfographic}
+        />
+      )}
     </Box>
   );
 };
 
 export default ChatInterface;
+
