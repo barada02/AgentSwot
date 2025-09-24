@@ -48,8 +48,9 @@
 - **Authentication**: JWT-based session management
 
 ```mermaid
-graph TD
-    A[AgentSwot Platform] --> B[Frontend - React/TypeScript]
+flowchart TD
+    A[AgentSwot Platform]
+    A --> B[Frontend - React/TypeScript]
     A --> C[Storage Server - FastAPI/Python]
     A --> D[ADK Server - Google Agent Kit]
     A --> E[MongoDB Atlas - Database]
@@ -93,25 +94,31 @@ graph TD
 - **Package Managers**: npm 9+, pip 23+
 
 ```mermaid
-graph LR
-    subgraph "Development Environment"
-        A[VS Code IDE] --> B[Extensions]
+flowchart TD
+    subgraph DE["Development Environment"]
+        A[VS Code IDE]
+        A --> B[Extensions]
         B --> B1[TypeScript/React]
         B --> B2[Python/FastAPI]
         B --> B3[MongoDB Tools]
     end
     
-    subgraph "System Resources"
-        C[8-Core CPU] --> D[16GB RAM]
+    subgraph SR["System Resources"]
+        C[8-Core CPU]
+        C --> D[16GB RAM]
         D --> E[200GB SSD]
         E --> F[50+ Mbps Network]
     end
     
-    subgraph "Runtime Environment"
-        G[Node.js 18+] --> H[Python 3.12+]
+    subgraph RE["Runtime Environment"]
+        G[Node.js 18+]
+        G --> H[Python 3.12+]
         H --> I[MongoDB Atlas]
         I --> J[Google Cloud AI]
     end
+    
+    DE --> SR
+    SR --> RE
 ```
 
 ## 3.3 System Architecture & Design
@@ -466,8 +473,9 @@ erDiagram
 ### 3.3.7 Component Architecture Diagram
 
 ```mermaid
-graph TD
-    subgraph "Frontend Architecture"
+flowchart TD
+    subgraph FA["Frontend Architecture"]
+        direction TB
         A[App.tsx - Root Component]
         A --> B[Router Configuration]
         A --> C[Theme Provider]
@@ -499,7 +507,8 @@ graph TD
         O --> O3[database.ts]
     end
     
-    subgraph "Backend Architecture"
+    subgraph BA["Backend Architecture"]
+        direction TB
         P[Storage Server - FastAPI]
         P --> P1[Authentication Routes]
         P --> P2[Session Management]
@@ -513,15 +522,17 @@ graph TD
         Q --> Q4[Response Formatting]
     end
     
-    J --> P
-    P --> Q
+    FA --> BA
+    J -.->|API Calls| P
+    P -.->|AI Processing| Q
 ```
 
 ### 3.3.8 Deployment Architecture
 
 ```mermaid
-graph TB
-    subgraph "Development Environment"
+flowchart TD
+    subgraph DEV["Development Environment"]
+        direction TB
         A[Developer Machine]
         A --> A1[VS Code IDE]
         A --> A2[Node.js Runtime]
@@ -529,7 +540,8 @@ graph TB
         A --> A4[Local Testing]
     end
     
-    subgraph "Build & Deploy Pipeline"
+    subgraph BDP["Build & Deploy Pipeline"]
+        direction TB
         B[Version Control - Git]
         B --> C[Build Process]
         C --> C1[Vite Build - Frontend]
@@ -537,7 +549,8 @@ graph TB
         C --> C3[Docker Containerization]
     end
     
-    subgraph "Production Environment"
+    subgraph PROD["Production Environment"]
+        direction TB
         D[Load Balancer]
         D --> E[Frontend Server - Nginx]
         D --> F[API Gateway]
@@ -558,12 +571,66 @@ graph TB
         J --> J3[Performance Analytics]
     end
     
-    A --> B
-    B --> D
+    DEV --> BDP
+    BDP --> PROD
 ```
 
-This comprehensive Chapter 3 provides detailed system design documentation with multiple Mermaid diagrams covering all aspects of your AgentSwot architecture, from high-level system overview to detailed component interactions and data models.&amp; Requirements
-3.1 Software Requirements
+### 3.3.9 Data Relationships and Schema Design
+
+The AgentSwot platform employs a MongoDB Atlas NoSQL database architecture designed to support scalable, flexible document storage while maintaining clear relational patterns between core entities. The database schema consists of four primary collections that work together to provide comprehensive user session management, conversation tracking, and infographic storage capabilities.
+
+**Users Collection Schema:**
+The Users collection serves as the foundational identity management system, storing essential user account information including authentication credentials, profile data, and account status tracking. Each user document contains a unique `userId` field generated using UUID4 for global uniqueness, ensuring secure user identification across distributed systems. The `passwordHash` field utilizes bcrypt encryption with salt rounds for secure credential storage, while the `email` field enforces uniqueness constraints to prevent duplicate accounts. Additional fields include `username` for display purposes, `createdAt` and `lastLoginAt` timestamps for account analytics, `isActive` boolean for account status management, and a flexible `profile` object containing user preferences and customizable metadata.
+
+**Sessions Collection Relationships:**
+The Sessions collection maintains a direct foreign key relationship with Users through the `userId` field, establishing a **1:N relationship** (One User : Many Sessions) where each user can create multiple analysis sessions while each session belongs to exactly one user. This relationship pattern allows:
+- **Users (1) ← → Sessions (N)**: One user can initiate multiple SWOT analysis projects
+- **Foreign Key**: `userId` in Sessions collection references `userId` in Users collection
+- **Cardinality**: Minimum 0 sessions per user, maximum unlimited sessions per user
+
+Each session document includes a unique `sessionId` for direct reference, `appName` for application context tracking, temporal fields (`startTime`, `lastActivity`, `endTime`) for session lifecycle management, and an `isActive` boolean for session state control. The `metadata` object provides extensible storage for business context information such as industry type, company size, and analysis goals, while the `messageIds` array maintains ordered references to associated conversation messages for efficient query optimization.
+
+**Messages Collection Architecture:**
+The Messages collection implements a dual foreign key structure with **two 1:N relationships**, referencing both Sessions (`sessionId`) and Users (`userId`) to enable flexible querying patterns for both user-centric and session-centric data retrieval:
+
+- **Users (1) ← → Messages (N)**: One user can author many messages across all their sessions
+- **Sessions (1) ← → Messages (N)**: One session contains many conversational messages  
+- **Foreign Keys**: `userId` references Users collection, `sessionId` references Sessions collection
+- **Cardinality**: Each message belongs to exactly one user and exactly one session
+
+This **many-to-one-to-one relationship pattern** (Messages N:1 Sessions N:1 Users) creates a hierarchical data structure where messages are contained within sessions, which are owned by users. Each message document contains a unique `messageId`, role designation (`user` or `assistant`) for conversation flow management, message content, precise timestamp for chronological ordering, and an `infographicIds` array linking to associated visual content. This design supports efficient conversation reconstruction while maintaining referential integrity across user sessions and enabling advanced analytics on conversation patterns and user engagement metrics.
+
+**Infographics Collection Integration:**
+The Infographics collection establishes a **N:1 relationship** (Many Infographics : One Message) with Messages through the `messageId` foreign key, allowing multiple infographic elements to be associated with a single AI response while maintaining individual tracking and version control:
+
+- **Messages (1) ← → Infographics (N)**: One message can generate multiple infographic variations
+- **Foreign Key**: `messageId` in Infographics collection references `messageId` in Messages collection  
+- **Cardinality**: Minimum 0 infographics per message, maximum unlimited infographics per message
+- **Business Logic**: Supports iterative infographic generation and A/B testing of visual designs
+
+Each infographic document includes a unique `infographicId`, `contentType` classification for rendering optimization, complete `htmlCode` and `rawCode` storage for multi-format support, `partIndex` for ordered display within message contexts, creation timestamps, and flexible `styling` objects for customization. This structure enables efficient PDF generation, HTML export, and future enhancement capabilities while preserving the complete infographic generation context.
+
+**Complete Relationship Model Summary:**
+The AgentSwot database implements a hierarchical relationship structure with clear cardinality constraints:
+
+```
+Users (1) ──1:N──→ Sessions (N) ──1:N──→ Messages (N) ──1:N──→ Infographics (N)
+   │                                │
+   └────────────1:N─────────────────┘
+```
+
+**Relationship Cardinality Table:**
+| Parent Collection | Child Collection | Relationship | Cardinality | Foreign Key | Business Rule |
+|-------------------|------------------|--------------|-------------|-------------|---------------|
+| Users | Sessions | 1:N | 1 user : 0+ sessions | userId | Users can create multiple SWOT projects |
+| Users | Messages | 1:N | 1 user : 0+ messages | userId | Users can participate in multiple conversations |
+| Sessions | Messages | 1:N | 1 session : 2+ messages | sessionId | Sessions require conversational interaction |
+| Messages | Infographics | 1:N | 1 message : 0+ infographics | messageId | Messages can generate multiple visualizations |
+
+**Referential Integrity and Query Optimization:**
+The database design implements logical referential integrity through application-level constraints and MongoDB indexing strategies. Compound indexes on `(userId, sessionId)` and `(sessionId, timestamp)` optimize common query patterns for session retrieval and conversation loading. The schema supports efficient cascade operations for session cleanup and user account management while maintaining data consistency across related collections. Foreign key relationships enable advanced analytics queries such as user engagement tracking, session duration analysis, and infographic generation patterns. The flexible document structure accommodates future feature expansion without requiring schema migrations, supporting rapid platform evolution and enhanced functionality development.
+
+This comprehensive Chapter 3 provides detailed system design documentation with multiple Mermaid diagrams covering all aspects of your AgentSwot architecture, from high-level system overview to detailed component interactions and comprehensive data model relationships.
 List OS, programming languages, frameworks, libraries, database, IDE, and any external APIs.
 
 Example:
