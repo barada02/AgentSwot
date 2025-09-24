@@ -1,22 +1,34 @@
-# 🎯 Agent SWOT - Features & Innovations
+# 🎯 AgentSwot - Complete Feature Documentation
 
-## Project Overview
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/barada02/AgentSwot)
+[![AI Powered](https://img.shields.io/badge/AI-Gemini%202.0%20Flash-green.svg)](https://ai.google.dev/)
+[![Database](https://img.shields.io/badge/Database-MongoDB%20Atlas-green.svg)](https://www.mongodb.com/atlas)
 
-Agent SWOT is an intelligent business analysis platform that combines AI-powered agents with dynamic web interfaces to provide comprehensive SWOT (Strengths, Weaknesses, Opportunities, Threats) analysis for businesses and products. The system integrates cutting-edge AI capabilities with modern web technologies to deliver interactive, visual business insights.
+## 🌟 Project Overview
+
+**AgentSwot** is a revolutionary AI-powered business analysis platform that transforms traditional SWOT analysis through intelligent automation and dynamic visualization. By combining Google's advanced Gemini 2.0 Flash model with modern web technologies, the platform delivers comprehensive SWOT (Strengths, Weaknesses, Opportunities, Threats) analysis through an intuitive conversational interface.
+
+### 🎯 Core Mission
+To democratize professional business analysis by making sophisticated SWOT analysis accessible to entrepreneurs, startups, and established businesses through AI-powered automation and intelligent market research integration.
 
 ## 🚀 Core Features
 
-### 1. **AI-Powered SWOT Analysis**
-- **Real-time Analysis**: Interactive chat interface with intelligent agents
-- **Context-Aware Responses**: Agents understand business context and provide tailored insights
-- **Multi-turn Conversations**: Continuous dialogue for refined analysis
-- **Comprehensive Coverage**: Analysis of strengths, weaknesses, opportunities, and threats
+### 1. **🤖 AI-Powered SWOT Analysis Engine**
+- **Real-time Analysis**: Interactive chat interface with Google Gemini 2.0 Flash integration
+- **Context-Aware Intelligence**: Agents maintain conversation context and business understanding
+- **Multi-turn Conversations**: Progressive refinement through continuous dialogue
+- **Comprehensive Coverage**: Deep analysis across all four SWOT dimensions
+- **Market Intelligence**: Live Google Search integration for current market data
+- **Industry-Specific Insights**: Tailored analysis based on business sector and type
 
-### 2. **Dynamic Infographic Generation & Rendering**
-- **Intelligent Content Detection**: Automatic detection of embedded infographic content in agent responses
-- **JSON-Based Infographics**: Agents can generate rich HTML infographics embedded in JSON format
-- **Real-time Processing**: Live parsing and rendering of dynamic content
-- **Interactive Visualization**: Full-featured HTML/CSS/JavaScript infographic support
+### 2. **🎨 Revolutionary Infographic System**
+- **JSON-Embedded HTML**: Breakthrough approach to embedding rich HTML content in AI responses
+- **Intelligent Content Detection**: Advanced regex-based parsing of infographic content
+- **Secure Iframe Rendering**: Sandboxed execution environment for generated content
+- **Interactive Visualizations**: Full HTML/CSS/JavaScript support with interactivity
+- **Export Capabilities**: Download as HTML or open in new browser tab
+- **Responsive Design**: Infographics adapt to different screen sizes
+- **Real-time Generation**: Dynamic content creation during conversation flow
 
 ## 🔧 Technical Innovations
 
@@ -119,26 +131,40 @@ Text + JSON → Pattern Match → Extract & Parse → Sanitize → Iframe Displa
 4. **Performance Optimization**: Efficient parsing with minimal overhead
 5. **Error Resilience**: Graceful handling of malformed content
 
-## 🛠️ Technology Stack
+## 🛠️ Comprehensive Technology Stack
 
-### Frontend
-- **React 18+**: Modern component-based architecture
-- **TypeScript**: Type-safe development with advanced type definitions
-- **Material-UI (MUI)**: Professional component library and design system
-- **Vite**: Fast development build tool with HMR
-- **Axios**: HTTP client with advanced interceptors
+### 🎨 Frontend Technologies
+- **React 18+**: Latest React with concurrent features and automatic batching
+- **TypeScript 5.8+**: Advanced type safety with strict mode enabled
+- **Material-UI v6**: Google's Material Design with custom theming
+- **Vite 7.0**: Next-generation build tool with lightning-fast HMR
+- **Axios**: Promise-based HTTP client with interceptors and error handling
+- **React Router v6**: Modern client-side routing with lazy loading
+- **React Hook Form**: Performant form handling with minimal re-renders
 
-### Backend Integration
-- **ADK (Agent Development Kit)**: Custom agent framework
-- **FastAPI**: High-performance Python API framework
-- **Session Management**: Persistent conversation state
-- **Multi-agent Support**: Scalable agent architecture
+### ⚙️ Backend Services
+- **Google ADK**: Agent Development Kit with Gemini 2.0 Flash integration
+- **FastAPI**: Async Python framework with automatic API documentation
+- **MongoDB Atlas**: Cloud-native NoSQL database with global clusters
+- **PyMongo**: Official MongoDB driver with connection pooling
+- **JWT Authentication**: JSON Web Tokens with bcrypt password hashing
+- **Uvicorn**: Lightning-fast ASGI server with auto-reload
+- **Python 3.8+**: Modern Python with asyncio and type hints
 
-### Advanced Features
-- **Dynamic Content Processing**: Real-time HTML generation and rendering
-- **Safe Code Execution**: Sandboxed iframe rendering
-- **Export Capabilities**: HTML download and new-tab viewing
-- **Responsive Design**: Mobile-first approach with adaptive layouts
+### 🤖 AI & Integration Layer
+- **Google Gemini 2.0 Flash**: State-of-the-art language model for business analysis
+- **Google Search API**: Real-time market intelligence and competitive analysis
+- **Multi-tool Agent Framework**: Extensible agent architecture for future tools
+- **Content Processing Pipeline**: Advanced text processing and infographic extraction
+- **Search Result Analysis**: Intelligent parsing of web content for SWOT insights
+
+### 🌍 Infrastructure & DevOps
+- **Environment Configuration**: Docker-ready with .env-based configuration
+- **Health Monitoring**: Real-time service status and database connectivity
+- **Logging System**: Comprehensive logging with structured JSON output
+- **Error Tracking**: Detailed error reporting and stack trace capture
+- **Performance Monitoring**: Response time tracking and optimization
+- **Scalable Architecture**: Horizontal scaling ready with load balancer support
 
 ## 🎨 User Experience Innovations
 

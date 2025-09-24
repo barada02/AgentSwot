@@ -1,20 +1,45 @@
 
-1. http://127.0.0.1:8000/list-apps
-type: get
+# 🔌 AgentSwot API Endpoints Reference
 
-output: [
+> Quick reference for all API endpoints used in the AgentSwot system
+
+## 🏗️ System Architecture
+
+```
+React Frontend ←→ Storage Server (Port 8001) ←→ ADK Server (Port 8000)
+                        ↓
+                  MongoDB Atlas
+```
+
+## 📡 ADK Server Endpoints (Port 8000)
+
+### 1. Health Check / List Applications
+```http
+GET http://127.0.0.1:8000/list-apps
+```
+
+**Purpose**: Check ADK server connectivity and list available applications
+**Response**:
+```json
+[
     "multi_tool_agent",
     "vertexagent"
 ]
-it helpt to check the api is working or not 
+```
+**Usage**: Used to verify the API is working correctly 
 
-2. http://127.0.0.1:8000/apps/multi_tool_agent/users/ck/sessions/sess127
+### 2. Create Session
+```http
+POST http://127.0.0.1:8000/apps/multi_tool_agent/users/{user_id}/sessions/{session_id}
+```
 
-type: post
+**Purpose**: Create a new session for a user in the multi_tool_agent application
+**Parameters**:
+- `user_id`: Unique identifier for the user (e.g., "ck")
+- `session_id`: Unique session identifier (e.g., "sess127")
 
-purpose: to create a new session for the user "ck" in the "multi_tool_agent" app with session id "sess127"
-output: 
-
+**Response**:
+```json
 {
     "id": "sess127",
     "appName": "multi_tool_agent",
@@ -23,13 +48,19 @@ output:
     "events": [],
     "lastUpdateTime": 1755337118.98228
 }
+```
 
 
-3. http://127.0.0.1:8000/run
+### 3. Send Message / Run Agent
+```http
+POST http://127.0.0.1:8000/run
+```
 
-type: post
+**Purpose**: Send a message to the AI agent for processing
+**Content-Type**: `application/json`
 
-json body: 
+**Request Body**:
+```json
 {
   "app_name": "multi_tool_agent",
   "user_id": "ck",
@@ -37,11 +68,12 @@ json body:
   "new_message": {
     "role": "user",
     "parts": [
-      {"text": "i want to lunch a product , it's a jar of healthy fruits"}
+      {"text": "i want to launch a product, it's a jar of healthy fruits"}
     ]
   },
   "streaming": false
 }
+```
 
 output:
 
@@ -87,15 +119,18 @@ output:
 ]
 
 
-4. get Session
+### 4. Get Session Details
+```http
+GET http://127.0.0.1:8000/apps/multi_tool_agent/users/{user_id}/sessions/{session_id}
+```
 
-http://127.0.0.1:8000/apps/multi_tool_agent/users/ck/sessions/1756834680318
+**Purpose**: Retrieve session information including conversation history
+**Parameters**:
+- `user_id`: User identifier (e.g., "ck")  
+- `session_id`: Session identifier (e.g., "1756834680318")
 
-type: get
-purpose: to retrieve the session information for the user "ck" in the "multi_tool_agent" app with session id "1756834680318" . It contains the conversation history including the messages exchanged during the session.
-
-output:
-
+**Response**:
+```json
 {
     "id": "1756834680318",
     "appName": "multi_tool_agent",
@@ -637,10 +672,237 @@ output:
                     "competitors healthy snacks Hyderabad India",
                     "supply chain fruits Hyderabad India",
                     "office food delivery services Hyderabad",
-                    "health food trends Hyderabad India",
+                    "health food trends Hyderabad India", 
                     "fruit snack market in Hyderabad India",
                     "HTML infographic template"
                 ]
+            }
+        }
+    }
+]
+```
+
+---
+
+## 📡 Storage Server Endpoints (Port 8001)
+
+> **Note**: These are the main endpoints used by the React frontend. The Storage Server acts as middleware between the frontend and ADK server.
+
+### 🔓 Public Endpoints
+
+#### Health Check
+```http
+GET http://127.0.0.1:8001/health
+```
+**Purpose**: Check system health and service status
+**Response**:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "services": {
+    "adk": {
+      "status": "connected",
+      "url": "http://127.0.0.1:8000"
+    },
+    "mongodb": {
+      "status": "connected",
+      "database": "agentswot",
+      "collections": {
+        "users": 150,
+        "sessions": 1250,
+        "messages": 8900,
+        "infographics": 450
+      }
+    }
+  }
+}
+```
+
+#### Root Information
+```http
+GET http://127.0.0.1:8001/
+```
+**Response**:
+```json
+{
+  "message": "AgentSwot Storage & Integration API",
+  "version": "2.0.0",
+  "docs": "/docs",
+  "health": "/health"
+}
+```
+
+### 🔐 Authentication Endpoints
+
+#### Register User
+```http
+POST http://127.0.0.1:8001/auth/register
+Content-Type: application/json
+```
+**Request**:
+```json
+{
+  "email": "user@example.com",
+  "password": "securePassword123",
+  "full_name": "John Doe"
+}
+```
+
+#### Login User
+```http
+POST http://127.0.0.1:8001/auth/login
+Content-Type: application/json
+```
+**Request**:
+```json
+{
+  "email": "user@example.com",
+  "password": "securePassword123"
+}
+```
+
+### 🎯 Session Management (Authenticated)
+
+#### Create Session
+```http
+POST http://127.0.0.1:8001/sessions
+Authorization: Bearer {jwt_token}
+Content-Type: application/json
+```
+**Request**:
+```json
+{
+  "app_name": "multi_tool_agent"
+}
+```
+**Response**:
+```json
+{
+  "session_id": "sess_1705312200318",
+  "adk_session": {
+    "id": "sess_1705312200318",
+    "appName": "multi_tool_agent",
+    "userId": "user_507f1f77bcf86cd799439011",
+    "state": {},
+    "events": [],
+    "lastUpdateTime": 1705312200.318
+  },
+  "mongodb_session": {
+    "session_id": "sess_1705312200318",
+    "user_id": "507f1f77bcf86cd799439011",
+    "app_name": "multi_tool_agent",
+    "created_at": "2024-01-15T10:30:00Z",
+    "last_updated": "2024-01-15T10:30:00Z",
+    "is_active": true
+  }
+}
+```
+
+#### Get Session Details
+```http
+GET http://127.0.0.1:8001/sessions/{session_id}
+Authorization: Bearer {jwt_token}
+```
+
+#### Delete Session
+```http
+DELETE http://127.0.0.1:8001/sessions/{session_id}
+Authorization: Bearer {jwt_token}
+```
+
+### 💬 Chat & Messaging (Authenticated)
+
+#### Send Message
+```http
+POST http://127.0.0.1:8001/chat
+Authorization: Bearer {jwt_token}
+Content-Type: application/json
+```
+**Request**:
+```json
+{
+  "session_id": "sess_1705312200318",
+  "message": "I want to launch a healthy fruit jar product for busy professionals",
+  "app_name": "multi_tool_agent"
+}
+```
+**Response**:
+```json
+{
+  "message_id": "msg_1705312250123",
+  "session_id": "sess_1705312200318",
+  "user_message": {
+    "message_id": "msg_1705312250122",
+    "role": "user",
+    "content": "I want to launch a healthy fruit jar product...",
+    "timestamp": 1705312250122
+  },
+  "agent_response": {
+    "message_id": "msg_1705312250123",
+    "role": "assistant", 
+    "content": "Great idea! To provide a comprehensive SWOT analysis...",
+    "timestamp": 1705312250123,
+    "metadata": {
+      "token_count": 245,
+      "processing_time": 2.3,
+      "model": "gemini-2.0-flash-001"
+    }
+  },
+  "infographics": [],
+  "grounding_chunks": []
+}
+```
+
+#### Get Conversation History
+```http
+GET http://127.0.0.1:8001/conversations/{session_id}
+Authorization: Bearer {jwt_token}
+```
+**Query Parameters**:
+- `limit` (optional): Number of messages (default: 100)
+- `offset` (optional): Skip messages (default: 0)
+- `include_infographics` (optional): Include infographic data (default: true)
+
+### 📊 Data Retrieval (Authenticated)
+
+#### Get Session Infographics
+```http
+GET http://127.0.0.1:8001/sessions/{session_id}/infographics
+Authorization: Bearer {jwt_token}
+```
+
+#### Get Grounding Data
+```http
+GET http://127.0.0.1:8001/sessions/{session_id}/grounding
+Authorization: Bearer {jwt_token}
+```
+
+#### Export Session Data
+```http
+GET http://127.0.0.1:8001/export/{session_id}
+Authorization: Bearer {jwt_token}
+```
+**Query Parameters**:
+- `format` (optional): "json" | "html" (default: "json")
+- `include_infographics` (optional): Include infographic data (default: true)
+
+---
+
+## 🔄 Data Flow Summary
+
+1. **Frontend** → POST /sessions → **Storage Server** → ADK Session Creation
+2. **Frontend** → POST /chat → **Storage Server** → ADK Message Processing → MongoDB Storage  
+3. **Frontend** → GET /conversations → **Storage Server** → MongoDB Retrieval
+4. **Storage Server** automatically processes infographics and grounding data
+5. All responses include processed data ready for frontend consumption
+
+## 📚 Additional Resources
+
+- **Interactive API Documentation**: http://localhost:8001/docs
+- **Complete API Reference**: [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)  
+- **Setup Guide**: [SETUP_V2.md](./SETUP_V2.md)
+- **Developer Guide**: [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)
             },
             "usageMetadata": {
                 "candidatesTokenCount": 2202,
